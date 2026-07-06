@@ -119,8 +119,14 @@ def main():
 
     mp = _resolve_map(map_path)
     if not os.path.isfile(mp):
-        print(f"Map not found: {mp}")
-        _sys.exit(1)
+        import json, tempfile
+        from ghostengine._default_map import DEFAULT_MAP
+        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+        json.dump(DEFAULT_MAP, tmp, indent=2)
+        tmp.close()
+        mp = tmp.name
+        print(f"[launcher] Using default demo map (saved to {mp})")
+        print("[launcher] Tip: ghostworld-editor to create your own maps!")
 
     _acquire_lock()  # ensure only one instance runs
     asyncio.run(launch_all(mp))
