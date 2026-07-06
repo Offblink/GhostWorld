@@ -250,6 +250,23 @@ class LocalClient:
             self.player_pitch += (-mr[1]*self.sens*80*dt + pk*dt)
             self.player_pitch = max(-300, min(300, self.player_pitch))
 
+            # NPC dialogue detection
+            self._dialogue_npc = None
+            if not self._dialogue_text:
+                for e in self.entities:
+                    if e.kind != "avatar" or not e.dialogue: continue
+                    dist = ((self.player_x - e.x)**2 + (self.player_y - e.y)**2)**0.5
+                    if dist < 1.5:
+                        dx = e.x - self.player_x; dy = e.y - self.player_y
+                        diff = math.atan2(dy, dx) - self.player_angle
+                        while diff > math.pi: diff -= 2*math.pi
+                        while diff < -math.pi: diff += 2*math.pi
+                        if abs(diff) < math.radians(60):
+                            self._dialogue_npc = e; break
+            if self._dialogue_time > 0:
+                self._dialogue_time -= dt
+                if self._dialogue_time <= 0: self._dialogue_text = ""
+
             frame = self._build_frame(); s = pygame.display.get_surface()
             if s is None: continue
             render(frame, s)
@@ -293,6 +310,21 @@ class LocalClient:
             if self._dialogue_time > 0:
                 self._dialogue_time -= dt
                 if self._dialogue_time <= 0: self._dialogue_text = ""
+            # ── NPC dialogue HUD ──
+            if self._dialogue_text:
+                dfont = chinese_font(28)
+                sw = s.get_width()
+                dsurf = dfont.render(self._dialogue_text, True, (255, 255, 200))
+                bg = pygame.Surface((dsurf.get_width()+40, dsurf.get_height()+20), pygame.SRCALPHA)
+                bg.fill((0,0,0,180))
+                bx = (sw - bg.get_width())//2; by = s.get_height() - bg.get_height() - 60
+                s.blit(bg, (bx, by)); s.blit(dsurf, (bx+20, by+10))
+            elif self._dialogue_npc:
+                prompt = chinese_font(20)
+                psurf = prompt.render("按 E 对话", True, (255, 255, 150))
+                sx = (s.get_width() - psurf.get_width())//2
+                s.blit(psurf, (sx, s.get_height() - 50))
+
             # ── map name HUD (bottom-right) ──
             map_name = os.path.basename(self.ws.map_path) if self.ws.map_path else "unknown"
             map_txt = chinese_font(14).render(map_name, True, (180, 180, 200))
