@@ -121,15 +121,18 @@ def main():
     if not os.path.isfile(mp):
         import json, tempfile
         from ghostengine._default_map import DEFAULT_MAP
+        from ghostengine._default_map2 import DEFAULT_MAP2
         tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
         json.dump(DEFAULT_MAP, tmp, indent=2)
         tmp.close()
         mp = tmp.name
-        print(f"[launcher] Using default demo map (saved to {mp})")
+        tmp_dir = os.path.dirname(mp)
+        map2_path = os.path.join(tmp_dir, "_default_map2.json")
+        if not os.path.isfile(map2_path):
+            with open(map2_path, 'w', encoding='utf-8') as f:
+                json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
+        print(f"[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
-
-    _acquire_lock()  # ensure only one instance runs
-    asyncio.run(launch_all(mp))
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ def run(path):
                 elif e.key==pygame.K_e:
                     if dialogue_npc and dialogue_npc.dialogue and not dialogue_text:
                         dialogue_text = dialogue_npc.dialogue
-                        dialogue_time = 10.0
+                        dialogue_time = 3.0
             elif e.type==pygame.MOUSEMOTION: mr=e.rel
 
         if paused:

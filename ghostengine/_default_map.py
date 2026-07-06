@@ -21,11 +21,13 @@ DEFAULT_MAP = {
   ],
   "player_spawn": {"x": 7.5, "y": 3.5, "angle": 0.0},
   "entities": [
+    {"x": 7.5, "y": 7.5, "kind": "avatar", "name": "Blinvo",
+     "dialogue": "你好，我是Blinvo！欢迎来到GhostWorld！",
+     "size_3d": 800, "width_3d": 0.8, "occlusion": "per_column"},
     {"x": 7.5, "y": 1.5, "kind": "portal", "id": "portal_north",
-     "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 7.5, "y": 13.5, "kind": "portal", "id": "portal_south",
-     "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 7.5, "y": 7.5, "kind": "item", "pickup": True, "pickup_label": "Hello ghostworld!",
+     "portal_target": {"portal_id": "portal_back", "map": "_default_map2.json"},
+     "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
+    {"x": 7.5, "y": 9.5, "kind": "item", "pickup": True, "pickup_label": "四处走走逛逛吧！",
      "size_3d": 150, "width_3d": 0.2, "occlusion": "center"}
   ],
   "colors": {

@@ -131,7 +131,7 @@ class LocalClient:
 +                    elif e.key == pygame.K_e:
 +                        if self._dialogue_npc and self._dialogue_npc.dialogue and not self._dialogue_text:
 +                            self._dialogue_text = self._dialogue_npc.dialogue
-+                            self._dialogue_time = 10.0
++                            self._dialogue_time = 3.0
                     if paused:
                         if e.key == pygame.K_SPACE: paused = False; pygame.event.set_grab(True); pygame.mouse.set_visible(False)
                         elif e.key == pygame.K_ESCAPE: self.running = False
