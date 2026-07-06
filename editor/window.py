@@ -24,6 +24,7 @@ class EditorWindow(QMainWindow):
         self.setWindowTitle("GhostWorld — 未命名")
         self.state = EditorState(project_dir=project_dir)
         self.resize(1280, 800)
+        self.undo_stack = QUndoStack(self)
         self.undo_stack.indexChanged.connect(self._on_undo_changed)
 
         # 菜单
@@ -228,7 +229,7 @@ class EditorWindow(QMainWindow):
                          ("invisible", False), ("mm_trigger", False),
                          ("use_facing", False), ("textures", {}),
                          ("name", ""), ("owner", ""), ("metadata", {}),
-                         ("capture_for", ""), ("portal_target", None)]:
+                         ("capture_for", ""), ("portal_target", None), ("dialogue", "")]:
                 e.setdefault(k, v)
         # backward compat: migrate old "exit" field to portal entity
         ex = raw.get("exit")
@@ -308,7 +309,7 @@ class EditorWindow(QMainWindow):
                          ("invisible", False), ("mm_trigger", False),
                          ("use_facing", False), ("textures", {}),
                          ("name", ""), ("owner", ""), ("metadata", {}),
-                         ("capture_for", ""), ("portal_target", None)]:
+                         ("capture_for", ""), ("portal_target", None), ("dialogue", "")]:
                 e.setdefault(k, v)
         try:
             with open(os.path.join(self.state.project_dir, ".last_map"), "w") as f:

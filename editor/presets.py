@@ -14,7 +14,7 @@ DEFAULT_PRESETS: list[dict[str, Any]] = [
             "occlusion": "per_column", "texture": "",
             "invisible": False, "mm_trigger": False,
             "name": "", "owner": "", "metadata": {},
-            "capture_for": "", "portal_target": None,
+            "capture_for": "", "portal_target": None, "dialogue": "",
         },
     },
     {

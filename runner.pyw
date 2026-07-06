@@ -1,4 +1,4 @@
-"""GhostEngine launcher — minimal single-player viewer."""
+"""GhostWorld launcher — minimal single-player viewer."""
 import sys, math, os
 import numpy as np, pygame
 from ghostengine import (
@@ -12,7 +12,7 @@ from metaverse._shared import fix_ime, chinese_font
 def run(path):
     fix_ime(); pygame.init()
     screen = pygame.display.set_mode((1068,801), pygame.RESIZABLE)
-    pygame.display.set_caption("GhostEngine")
+    pygame.display.set_caption("GhostWorld")
     pygame.event.set_grab(True); pygame.mouse.set_visible(False)
 
     raw = load_raw(path)
@@ -22,10 +22,8 @@ def run(path):
     entities = build_entities(raw, loader)
 
     grid = np.array(raw["grid"], dtype=int).T
-    # Validate: entities must not overlap walls
     from ghostengine.mapfile import validate_entities_on_walls
-    val_errors = validate_entities_on_walls(grid, raw.get("entities", []), raw.get("player_spawn"))
-    for err in val_errors:
+    for err in validate_entities_on_walls(grid, raw.get("entities", []), raw.get("player_spawn")):
         print(f"[runner] ⚠ {err}")
     ps = raw.get("player_spawn", {"x":7.5,"y":7.5,"angle":0})
     ctrl = FirstPersonController(x=ps["x"], y=ps["y"], angle=ps.get("angle",0), pitch=0, walls=grid)
@@ -37,6 +35,12 @@ def run(path):
     fog_on = test_cfg.get("g_enabled", True)
     sens = 2.5
     full, mm, paused = False, False, False
+
+    # NPC dialogue state
+    dialogue_npc = None
+    dialogue_text = ""
+    dialogue_time = 0.0
+
     clock = pygame.time.Clock(); running = True
     while running:
         dt=clock.tick(120)/1000.0
@@ -54,6 +58,10 @@ def run(path):
                 elif e.key==pygame.K_f: full=not full; screen=pygame.display.set_mode((0,0),pygame.FULLSCREEN) if full else pygame.display.set_mode((W,H),pygame.RESIZABLE); ctrl.set_screen_height(screen.get_height())
                 elif e.key==pygame.K_m and mm_granted: mm=not mm
                 elif e.key==pygame.K_g and test_cfg.get("g_enabled", False): fog_on = not fog_on
+                elif e.key==pygame.K_e:
+                    if dialogue_npc and dialogue_npc.dialogue and not dialogue_text:
+                        dialogue_text = dialogue_npc.dialogue
+                        dialogue_time = 10.0
             elif e.type==pygame.MOUSEMOTION: mr=e.rel
 
         if paused:
@@ -83,16 +91,33 @@ def run(path):
             mm_timer -= dt
             if mm_timer <= 0: mm_granted = False
 
+        # ── NPC dialogue detection ──
+        dialogue_npc = None
+        if not dialogue_text:
+            for ent in entities:
+                if ent.kind != "avatar" or not ent.dialogue:
+                    continue
+                dist = ((ctrl.x - ent.x)**2 + (ctrl.y - ent.y)**2)**0.5
+                if dist < 1.5:
+                    dx = ent.x - ctrl.x; dy = ent.y - ctrl.y
+                    diff = math.atan2(dy, dx) - ctrl.angle
+                    while diff > math.pi: diff -= 2*math.pi
+                    while diff < -math.pi: diff += 2*math.pi
+                    if abs(diff) < math.radians(60):
+                        dialogue_npc = ent; break
+        if dialogue_time > 0:
+            dialogue_time -= dt
+            if dialogue_time <= 0:
+                dialogue_text = ""; dialogue_time = 0
+
         # pickup
         to_remove = []
         new_pickups: list[str] = []
         for i, ent in enumerate(entities):
             if not ent.pickup: continue
             if ent.kind not in ("item", "prop"): continue
-            # Respect capture_for restriction
             cf = ent.capture_for
-            if cf and cf not in ("*", ""):
-                continue  # restricted to someone else
+            if cf and cf not in ("*", ""): continue
             dist = ((ctrl.x - ent.x)**2 + (ctrl.y - ent.y)**2)**0.5
             if dist < 1.0:
                 to_remove.append(i)
@@ -100,7 +125,6 @@ def run(path):
                 new_pickups.append(label)
         for i in reversed(to_remove):
             del entities[i]
-        # Track inventory counts
         if not hasattr(run, '_inventory'):
             run._inventory = {}
         for label in new_pickups:
@@ -122,7 +146,27 @@ def run(path):
             ep=[(e.x,e.y,(255,100,100)) for e in entities]
             wc={int(k):tuple(wd.color) if wd and wd.color else(100,100,150) for k,wd in colors.walls.items()}
             draw_minimap(s, grid, ctrl.x, ctrl.y, ctrl.angle, ep, wall_colors=wc)
-        # ── HUD: persistent inventory (top-left) ──
+
+        # ── HUD: NPC dialogue ──
+        if dialogue_text:
+            dfont = chinese_font(28)
+            sw = s.get_width()
+            dsurf = dfont.render(dialogue_text, True, (255, 255, 200))
+            bg = pygame.Surface((dsurf.get_width()+40, dsurf.get_height()+20), pygame.SRCALPHA)
+            bg.fill((0,0,0,180))
+            bx = (sw - bg.get_width())//2
+            by = s.get_height() - bg.get_height() - 60
+            s.blit(bg, (bx, by))
+            s.blit(dsurf, (bx+20, by+10))
+        elif dialogue_npc:
+            prompt = chinese_font(20)
+            psurf = prompt.render("按 E 对话", True, (255, 255, 150))
+            sw = s.get_width()
+            px = (sw - psurf.get_width())//2
+            py = s.get_height() - 50
+            s.blit(psurf, (px, py))
+
+        # HUD: inventory (top-left)
         if hasattr(run, '_inventory') and run._inventory:
             inv_font = chinese_font(20)
             y = 10

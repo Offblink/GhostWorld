@@ -153,7 +153,7 @@ def build_entities(raw: dict, texture_loader=None) -> list[EntityView]:
             pickup_label=e.get("pickup_label", ""),
             capture_for=e.get("capture_for", ""),
             portal_target=e.get("portal_target"),
-            name=e.get("name", ""),
+            dialogue=e.get("dialogue", ""),
             owner=e.get("owner", ""),
             metadata=e.get("metadata", {}),
         ))

@@ -51,7 +51,8 @@ class EntityView:
     pickup: bool = False
     pickup_label: str = ""
     capture_for: str = ""            # ""=public, "*"=anyone, "name"=owner-only auto-pickup
-    portal_target: dict | None = None # {"x":float, "y":float, "angle":float, "map":str}
+    portal_target: dict | None = None # {"portal_id":str, "map":str}
+    dialogue: str = ""               # NPC dialogue text (empty = no dialogue)
 
     # ── metaverse identity ──
     name: str = ""

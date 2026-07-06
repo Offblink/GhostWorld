@@ -69,6 +69,7 @@ class PropertyPanel(QWidget):
         self._ent_facing = QComboBox(); self._ent_facing.setFixedHeight(22); self._ent_facing.addItem("→东", 0.0); self._ent_facing.addItem("↓南", math.pi/2); self._ent_facing.addItem("←西", math.pi); self._ent_facing.addItem("↑北", math.pi*3/2); self._ent_facing.currentIndexChanged.connect(self._on_ent_changed); gfl.addRow("朝向:", self._ent_facing)
         self._ent_name = QLineEdit(); self._ent_name.setFixedHeight(22); self._ent_name.setPlaceholderText("精灵名"); self._ent_name.editingFinished.connect(self._on_ent_changed); gfl.addRow("名称:", self._ent_name)
         self._ent_owner = QLineEdit(); self._ent_owner.setFixedHeight(22); self._ent_owner.setPlaceholderText("归属"); self._ent_owner.editingFinished.connect(self._on_ent_changed); gfl.addRow("归属:", self._ent_owner)
+        self._ent_dialogue = QLineEdit(); self._ent_dialogue.setFixedHeight(22); self._ent_dialogue.setPlaceholderText("NPC对话内容（留空=无对话）"); self._ent_dialogue.editingFinished.connect(self._on_ent_changed); gfl.addRow("对话:", self._ent_dialogue)
         self._chk_use_facing = QCheckBox("使用朝向贴图"); self._chk_use_facing.toggled.connect(self._on_ent_changed); self._chk_use_facing.toggled.connect(self._on_facing_toggled); gfl.addRow(self._chk_use_facing)
         fw = QWidget(); ftr = QHBoxLayout(fw); ftr.setContentsMargins(0,0,0,0); self._tex_front = QLineEdit(); self._tex_front.setFixedHeight(22); self._tex_front.setPlaceholderText("正面贴图.png"); self._tex_front.editingFinished.connect(self._on_ent_facing_tex); ftr.addWidget(self._tex_front)
         fb = QPushButton("…"); fb.setFixedSize(24,22); fb.clicked.connect(lambda: self._browse_facing_tex("front")); ftr.addWidget(fb); self._tex_front_w = fw; gfl.addRow(" 前:", fw)
@@ -153,6 +154,7 @@ class PropertyPanel(QWidget):
                 self._ent_pickup_label.setVisible(pu_vis)
                 self._ent_pickup_label.blockSignals(True);self._ent_pickup_label.setText(e.get("pickup_label",""));self._ent_pickup_label.blockSignals(False)
                 self._ent_capture_for.blockSignals(True);self._ent_capture_for.setText(e.get("capture_for",""));self._ent_capture_for.blockSignals(False)
+                self._ent_dialogue.blockSignals(True);self._ent_dialogue.setText(e.get("dialogue",""));self._ent_dialogue.blockSignals(False)
                 self._chk_invisible.blockSignals(True);self._chk_invisible.setChecked(e.get("invisible",False));self._chk_invisible.blockSignals(False)
                 anim=e.get("anim",{})
                 self._chk_float.blockSignals(True);self._chk_float.setChecked("float" in anim);self._chk_float.blockSignals(False)
@@ -462,6 +464,7 @@ class PropertyPanel(QWidget):
         e["owner"] = self._ent_owner.text().strip()
         e["capture_for"] = self._ent_capture_for.text().strip()
         e["pickup"] = self._chk_pickup.isChecked()
+        e["dialogue"] = self._ent_dialogue.text().strip()
         e["pickup_label"] = self._ent_pickup_label.text().strip()
         # portal fields — portal_target is set via combo in _on_portal_target_changed
         # No need to sync portal_map text field here; the combo carries the full target data
