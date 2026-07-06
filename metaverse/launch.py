@@ -89,7 +89,7 @@ async def launch_all(map_path: str):
     else:
         with open(os.path.join(os.path.dirname(__file__), "agent_output.jsonl"), "a", encoding="utf-8") as _lf:
             _lf.write(json.dumps({"event":"config_missing","path":_cfg_path}) + "\n")
-    agent_name = _cfg.get("agent_name", "Blinvo")
+    agent_name = _cfg.get("agent_name", "omp")
     agent_tex = _cfg.get("agent_texture", "")
     player_name = _cfg.get("player_name", "player")
     player_tex = _cfg.get("player_texture", "")
