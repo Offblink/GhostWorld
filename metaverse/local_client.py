@@ -16,7 +16,7 @@ class LocalClient:
         self.sens = 2.5; self.fullscreen = False; self.show_minimap = True; self._flashlight = True; self.running = True
         self._agent_x = self._agent_y = self._agent_angle = None
         self._last_chat = []
-        self._dialogue_npc = None; self._dialogue_text = ""; self._dialogue_time = 0.0
+        self._dialogue_text = ""; self._dialogue_time = 0.0
 
 
     def _init_pygame(self):
@@ -77,8 +77,8 @@ class LocalClient:
                 kind=item.get("kind","item"), size_3d=item.get("size_3d",150), width_3d=item.get("width_3d",0.2),
                 anim=item.get("anim",{}), occlusion=item.get("occlusion","center"), visible=item.get("visible",True),
                 pickup=item.get("pickup",False), pickup_label=item.get("pickup_label",""),
-                capture_for=item.get("capture_for",""), portal_target=item.get("portal_target"),
-                dialogue=item.get("dialogue",""),
+                capture_for=item.get("capture_for",""), portal_target=item.get("portal_target"), dialogue=item.get("dialogue",""),
+                name=item.get("name",""), facing=item.get("facing",0)))
     def _load_tex(self, path):
         if not path or not self.loader: return None
         try: ext = os.path.splitext(path)[1].lower(); return self.loader.load_frames(path) if ext==".gif" else self.loader.load(path)
@@ -128,10 +128,20 @@ class LocalClient:
                     continue
                 if e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_RETURN: chatting = True; chat_input = ""; pygame.event.set_grab(False); pygame.mouse.set_visible(True); continue
-+                    elif e.key == pygame.K_e:
-+                        if self._dialogue_npc and self._dialogue_npc.dialogue and not self._dialogue_text:
-+                            self._dialogue_text = self._dialogue_npc.dialogue
-+                            self._dialogue_time = 3.0
+                    elif e.key == pygame.K_e:
+                        if not self._dialogue_text and self.entities:
+                            for ent in self.entities:
+                                if ent.kind == "avatar" and ent.dialogue:
+                                    dist = ((self.player_x - ent.x)**2 + (self.player_y - ent.y)**2)**0.5
+                                    if dist < 1.5:
+                                        dx = ent.x - self.player_x; dy = ent.y - self.player_y
+                                        diff = math.atan2(dy, dx) - self.player_angle
+                                        while diff > math.pi: diff -= 2*math.pi
+                                        while diff < -math.pi: diff += 2*math.pi
+                                        if abs(diff) < math.radians(60):
+                                            self._dialogue_text = ent.dialogue
+                                            self._dialogue_time = 3.0
+                                            break
                     if paused:
                         if e.key == pygame.K_SPACE: paused = False; pygame.event.set_grab(True); pygame.mouse.set_visible(False)
                         elif e.key == pygame.K_ESCAPE: self.running = False
@@ -161,25 +171,7 @@ class LocalClient:
                         self._bs_acc = 0.0; self._bs_fast = True
                 else:
                     self._bs_acc = 0.0; self._bs_fast = False
-                        # NPC dialogue detection
-+        self._dialogue_npc = None
-+        if not self._dialogue_text:
-+            for e in self.entities:
-+                if e.kind != "avatar" or not e.dialogue: continue
-+                dist = ((self.player_x - e.x)**2 + (self.player_y - e.y)**2)**0.5
-+                if dist < 1.5:
-+                    dx = e.x - self.player_x; dy = e.y - self.player_y
-+                    diff = math.atan2(dy, dx) - self.player_angle
-+                    while diff > math.pi: diff -= 2*math.pi
-+                    while diff < -math.pi: diff += 2*math.pi
-+                    if abs(diff) < math.radians(60):
-+                        self._dialogue_npc = e; break
-+        if self._dialogue_time > 0:
-+            self._dialogue_time -= dt
-+            if self._dialogue_time <= 0:
-+                self._dialogue_text = ""; self._dialogue_time = 0
-+
-+        frame = self._build_frame(); s = pygame.display.get_surface()
+                frame = self._build_frame(); s = pygame.display.get_surface()
                 if s:
                     render(frame, s)
                     # minimap while chatting too
@@ -289,26 +281,19 @@ class LocalClient:
                 txt = font.render(f"> {chat_input}_", True, (255,255,255)); s.blit(txt, (10, s.get_height()-25))
 
 
-                    # ── NPC dialogue HUD ──
-+            if self._dialogue_text:
-+                dfont = chinese_font(28)
-+                sw = s.get_width()
-+                dsurf = dfont.render(self._dialogue_text, True, (255, 255, 200))
-+                bg = pygame.Surface((dsurf.get_width()+40, dsurf.get_height()+20), pygame.SRCALPHA)
-+                bg.fill((0,0,0,180))
-+                bx = (sw - bg.get_width())//2
-+                by = s.get_height() - bg.get_height() - 60
-+                s.blit(bg, (bx, by))
-+                s.blit(dsurf, (bx+20, by+10))
-+            elif self._dialogue_npc:
-+                prompt = chinese_font(20)
-+                psurf = prompt.render("按 E 对话", True, (255, 255, 150))
-+                sw = s.get_width()
-+                px = (sw - psurf.get_width())//2
-+                py = s.get_height() - 50
-+                s.blit(psurf, (px, py))
-+
-+            # ── map name HUD (bottom-right) ──
+            # ── NPC dialogue HUD ──
+            if self._dialogue_text:
+                dfont = chinese_font(28)
+                sw = s.get_width()
+                dsurf = dfont.render(self._dialogue_text, True, (255, 255, 200))
+                bg = pygame.Surface((dsurf.get_width()+40, dsurf.get_height()+20), pygame.SRCALPHA)
+                bg.fill((0,0,0,180))
+                bx = (sw - bg.get_width())//2; by = s.get_height() - bg.get_height() - 60
+                s.blit(bg, (bx, by)); s.blit(dsurf, (bx+20, by+10))
+            if self._dialogue_time > 0:
+                self._dialogue_time -= dt
+                if self._dialogue_time <= 0: self._dialogue_text = ""
+            # ── map name HUD (bottom-right) ──
             map_name = os.path.basename(self.ws.map_path) if self.ws.map_path else "unknown"
             map_txt = chinese_font(14).render(map_name, True, (180, 180, 200))
             s.blit(map_txt, (s.get_width() - map_txt.get_width() - 10, s.get_height() - 25))
