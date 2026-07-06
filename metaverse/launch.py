@@ -122,15 +122,13 @@ def main():
         import json, tempfile
         from ghostengine._default_map import DEFAULT_MAP
         from ghostengine._default_map2 import DEFAULT_MAP2
-        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
-        json.dump(DEFAULT_MAP, tmp, indent=2)
-        tmp.close()
-        mp = tmp.name
-        tmp_dir = os.path.dirname(mp)
+        tmp_dir = tempfile.mkdtemp(prefix="ghostworld_")
+        mp = os.path.join(tmp_dir, "_default_map.json")
         map2_path = os.path.join(tmp_dir, "_default_map2.json")
-        if not os.path.isfile(map2_path):
-            with open(map2_path, 'w', encoding='utf-8') as f:
-                json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
+        with open(mp, 'w', encoding='utf-8') as f:
+            json.dump(DEFAULT_MAP, f, indent=2, ensure_ascii=False)
+        with open(map2_path, 'w', encoding='utf-8') as f:
+            json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
         print(f"[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
 

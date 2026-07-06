@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostworld"
-version = "0.1.4"
+version = "0.1.5"
 description = "GhostWorld — raycasting 3D engine + metaverse + map editor + AI Agent"
 requires-python = ">=3.10"
 dependencies = [
