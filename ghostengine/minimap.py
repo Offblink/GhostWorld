@@ -45,6 +45,7 @@ def draw_minimap(
     ox = (mm_size - gw * cell) // 2
     oy = (mm_size - gh * cell) // 2
 
+    # 1. walls + floor
     for x in range(gw):
         for y in range(gh):
             rect = pygame.Rect(ox + x * cell, oy + y * cell, cell, cell)
@@ -56,33 +57,36 @@ def draw_minimap(
                 pygame.draw.rect(mm, path_color, rect)
                 pygame.draw.rect(mm, path_outline, rect, 1)
 
-    # agent flashlight cone — draw BEFORE player so player is visible
-    cone_len = cell * 3.5
+    # 2. agent flashlight cone (behind entities and player)
     if agent_flashlight and agent_x is not None and agent_y is not None and agent_angle is not None:
         ap = (int(ox + agent_x * cell), int(oy + agent_y * cell))
         a_left = agent_angle - math.radians(30)
         a_right = agent_angle + math.radians(30)
-        apts = [
+        cone_len = cell * 3.5
+        pygame.draw.polygon(mm, agent_flash_color, [
             ap,
             (ap[0] + int(math.cos(a_left) * cone_len), ap[1] + int(math.sin(a_left) * cone_len)),
             (ap[0] + int(math.cos(a_right) * cone_len), ap[1] + int(math.sin(a_right) * cone_len)),
-        ]
-        pygame.draw.polygon(mm, agent_flash_color, apts)
+        ])
+
+    # 3. entities (items, portals)
+    if entities:
+        for ex, ey, ecol in entities:
+            ep = (int(ox + ex * cell), int(oy + ey * cell))
+            pygame.draw.circle(mm, ecol, ep, max(1, cell // 3))
+
+    # 4. agent dot (on top of cone)
+    if agent_x is not None and agent_y is not None:
+        ap = (int(ox + agent_x * cell), int(oy + agent_y * cell))
         pygame.draw.circle(mm, (0, 255, 100), ap, max(2, cell // 3))
 
-    # player (drawn on top of flashlight cone)
+    # 5. player (always on top)
     pp = (int(ox + player_x * cell), int(oy + player_y * cell))
     r = max(2, cell // 3)
     pygame.draw.circle(mm, player_color, pp, r)
     ex = pp[0] + int(math.cos(player_angle) * cell * 0.5)
     ey = pp[1] + int(math.sin(player_angle) * cell * 0.5)
     pygame.draw.line(mm, player_color, pp, (ex, ey), 1)
-
-    # entities
-    if entities:
-        for ex, ey, ecol in entities:
-            ep = (int(ox + ex * cell), int(oy + ey * cell))
-            pygame.draw.circle(mm, ecol, ep, max(1, cell // 3))
 
     # position
     if corner == "top_right":

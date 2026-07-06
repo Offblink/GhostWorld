@@ -19,7 +19,7 @@ DEFAULT_MAP = {
     [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ],
-  "player_spawn": {"x": 1.5, "y": 7.5, "angle": 0.0},
+  "player_spawn": {"x": 7.5, "y": 3.5, "angle": 0.0},
   "entities": [
     {"x": 7.5, "y": 1.5, "kind": "portal", "id": "portal_north",
      "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
