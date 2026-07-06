@@ -87,7 +87,10 @@ class WorldState:
         for f in os.listdir(d):
             if not f.endswith(".json") or f == os.path.basename(self.map_path) or f == "presets.json":
                 continue
-            self._load_map_file(os.path.join(d, f))
+            fp = os.path.join(d, f)
+            if os.path.getsize(fp) < 10:  # skip empty JSON files
+                continue
+            self._load_map_file(fp)
         # also add the main map itself
         self._load_map_file(self.map_path)
 
