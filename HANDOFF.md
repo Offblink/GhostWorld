@@ -26,11 +26,11 @@
 ## 启动
 
 ```bash
-cd C:\tmp\ghostengine
-python -m metaverse.launch my_map.json              # 指定地图
-python -m metaverse.launch                           # 默认读取 .last_map → demo_metaverse
-python launcher.py                                   # GUI 启动器
-python runner.pyw my_map.json                        # 单机预览
+ghostworld                        # 启动元宇宙（默认地图 + Agent Blinvo）
+ghostworld my_map.json            # 指定地图
+ghostworld-editor                 # 启动编辑器
+python runner.pyw my_map.json     # 单机预览
+python headless_agent.py map.json # 无头调试
 ```
 
 ### 无头调试
@@ -49,7 +49,7 @@ python headless_agent.py examples/new_test_map.json
 
 ## Agent 命令
 
-Agent 名默认 `omp`（在 `launch_config.json` 配置）。写 `metaverse/agent_commands.jsonl`（每行一个 JSON），agent 每 0.3s 读取并删除。
+Agent 名默认 `Blinvo`（在 `launch_config.json` 配置）。写 `metaverse/agent_commands.jsonl`（每行一个 JSON），agent 每 0.3s 读取并删除。
 
 ### 基础命令
 
@@ -163,7 +163,7 @@ python metaverse/tools/look.py   # 或直接读 perception 事件
 ## 物品交换
 
 - `give` 命令：从背包取出物品放地上，设 `capture_for` 限制拾取人
-- 玩家用 `/give omp item_name` 聊天命令丢给 agent
+- 玩家用 `/give Blinvo item_name` 聊天命令丢给 agent
 - `capture_for` 在 `check_pickups` 中校验
 - HUD 左上角显示 inventory（按 label 合并计数）
 
