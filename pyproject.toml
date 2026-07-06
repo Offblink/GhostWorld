@@ -21,4 +21,5 @@ dev = ["pytest", "mypy"]
 include = ["ghostengine*", "editor*", "metaverse*"]
 
 [project.scripts]
-ghostworld = "editor:main"
+ghostworld = "metaverse.launch:main"
+ghostworld-editor = "editor:main"
