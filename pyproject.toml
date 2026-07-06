@@ -9,7 +9,7 @@ description = "GhostWorld — raycasting 3D engine + metaverse + map editor + AI
 requires-python = ">=3.10"
 dependencies = [
     "pygame>=2.0",
-    "numpy>=1.20",
+    "numpy>=1.20,<2.5",
 ]
 
 [project.optional-dependencies]
