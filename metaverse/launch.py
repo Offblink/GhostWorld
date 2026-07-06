@@ -131,6 +131,7 @@ def main():
             json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
         print(f"[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
+    print("[launcher] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
 
     _acquire_lock()
     asyncio.run(launch_all(mp))

@@ -13,6 +13,7 @@ def run(path):
     fix_ime(); pygame.init()
     screen = pygame.display.set_mode((1068,801), pygame.RESIZABLE)
     pygame.display.set_caption("GhostWorld")
+    print("[runner] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
     pygame.event.set_grab(True); pygame.mouse.set_visible(False)
 
     raw = load_raw(path)
