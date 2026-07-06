@@ -14,7 +14,10 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["ghostengine*", "editor*", "metaverse*"]
 
-[project.optional-dependencies]
-editor = ["PySide6>=6.5"]
-full = ["PySide6>=6.5", "Pillow"]
-dev = ["pytest", "mypy"]
+[project.scripts]
+ghostworld-editor = "editor:main"
+ghostworld-runner = "editor:_run_headless"
+
+[tool.setuptools.package-data]
+"*" = ["*.json"]
+ghostengine = ["../examples/*.json"]
