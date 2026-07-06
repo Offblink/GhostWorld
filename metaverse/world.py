@@ -39,6 +39,7 @@ class Item:
     pickup_label: str = ""
     capture_for: str = ""           # ""=public, "name"=directed, "*"=any
     portal_target: dict[str, Any] | None = None
+    dialogue: str = ""
     anim: dict[str, Any] = field(default_factory=dict)
     size_3d: float = 150.0
     width_3d: float = 0.2
@@ -108,6 +109,7 @@ class WorldState:
                     texture_path=e.get("texture",""), kind=e.get("kind","item"),
                     pickup=e.get("pickup",False), pickup_label=e.get("pickup_label",""),
                     capture_for=e.get("capture_for",""), portal_target=e.get("portal_target"),
+                    dialogue=e.get("dialogue",""),
                     size_3d=e.get("size_3d",150), name=e.get("name",""))
                 citems[item.id] = item
             self.maps[name] = {"grid": grid, "colors": mdata.get("colors", {}),
@@ -145,6 +147,7 @@ class WorldState:
                 pickup_label=e.get("pickup_label", ""),
                 capture_for=e.get("capture_for", ""),
                 portal_target=e.get("portal_target"),
+                dialogue=e.get("dialogue", ""),
                 anim=e.get("anim", {}),
                 size_3d=e.get("size_3d", 150),
                 width_3d=e.get("width_3d", 0.2),
@@ -186,6 +189,7 @@ class WorldState:
                 "pickup": item.pickup, "pickup_label": item.pickup_label,
                 "capture_for": item.capture_for,
                 "portal_target": item.portal_target,
+                "dialogue": item.dialogue,
                 "anim": item.anim, "size_3d": item.size_3d,
                 "width_3d": item.width_3d, "occlusion": item.occlusion,
                 "visible": item.visible, "facing": item.facing,
@@ -235,6 +239,7 @@ class WorldState:
                 pickup_label=d.get("pickup_label", ""),
                 capture_for=d.get("capture_for", ""),
                 portal_target=d.get("portal_target"),
+                dialogue=d.get("dialogue", ""),
                 anim=d.get("anim", {}),
                 size_3d=d.get("size_3d", 150),
                 width_3d=d.get("width_3d", 0.2),

@@ -524,7 +524,7 @@ def _build_snapshot(ws: WorldState) -> dict:
                                "texture_paths": item.texture_paths, "kind": item.kind,
                                "pickup": item.pickup, "pickup_label": item.pickup_label,
                                "capture_for": item.capture_for, "portal_target": item.portal_target,
-                               "size_3d": item.size_3d, "width_3d": item.width_3d,
+                               "dialogue": getattr(item, 'dialogue', ''),
                                "anim": item.anim, "occlusion": item.occlusion, "visible": item.visible,
                                "facing": item.facing, "name": item.name,
                                "map_name": mname}
