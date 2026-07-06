@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# runtime artifacts
+.last_map
+metaverse/agent_commands.jsonl
+metaverse/agent_output.jsonl
+metaverse/.instance.lock
+snapshots/
+examples/states/
+metaverse/launch_config.json
+
+# secrets
+.env
+.env.*
