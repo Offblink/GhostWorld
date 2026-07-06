@@ -25,7 +25,7 @@ DEFAULT_MAP = {
      "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
     {"x": 7.5, "y": 13.5, "kind": "portal", "id": "portal_south",
      "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 7.5, "y": 7.5, "kind": "item", "pickup": True, "pickup_label": "GhostWorld 密钥",
+    {"x": 7.5, "y": 7.5, "kind": "item", "pickup": True, "pickup_label": "Hello ghostworld!",
      "size_3d": 150, "width_3d": 0.2, "occlusion": "center"}
   ],
   "colors": {
