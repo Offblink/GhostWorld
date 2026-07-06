@@ -66,7 +66,7 @@ class LocalClient:
             self._agent_x, self._agent_y, self._agent_angle = av["x"], av["y"], av.get("facing", 0)
             agent_seen = True
             self.entities.append(EntityView(x=av["x"], y=av["y"], texture=self._load_tex(av.get("texture_path","")),
-                kind="avatar", name=av.get("name",aid), size_3d=150, width_3d=0.2, facing=av.get("facing",0)))
+                kind="avatar", name=av.get("name",aid), size_3d=150, width_3d=0.2, facing=av.get("facing",0), dialogue="你好，我是Blinvo！欢迎来到GhostWorld！"))
         if not agent_seen:
             self._agent_x = self._agent_y = self._agent_angle = None
         for iid, item in items.items():
