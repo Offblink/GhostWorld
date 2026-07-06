@@ -134,6 +134,8 @@ def main():
         print(f"[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
 
+    _acquire_lock()
+    asyncio.run(launch_all(mp))
 
 if __name__ == "__main__":
     main()
