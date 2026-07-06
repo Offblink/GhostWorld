@@ -23,7 +23,7 @@ class EditorWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("GhostWorld — 未命名")
         self.state = EditorState(project_dir=project_dir)
-        self.undo_stack = QUndoStack(self)
+        self.resize(1280, 800)
         self.undo_stack.indexChanged.connect(self._on_undo_changed)
 
         # 菜单
