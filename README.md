@@ -69,12 +69,16 @@ Raycasting 3D engine + metaverse server + map editor + AI Agent platform.
 ## 安装
 
 ```bash
-pip install -e .              # 核心引擎 + 元宇宙
-pip install -e ".[editor]"    # + 编辑器
-pip install -e ".[full]"      # + 编辑器 + GIF 支持
+pip install git+https://github.com/Offblink/GhostWorld.git
 ```
 
 需要 Python ≥ 3.10。依赖：`pygame`, `numpy`。编辑器额外需要 `PySide6`。
+
+## 更新
+
+```bash
+pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git
+```
 
 > ⛔ **开发禁令**：本项目**严禁使用 WebSocket、MCP、或任何异步网络通信**。
 > Windows 上 WebSocket 存在未修复的严重 bug，曾导致项目崩溃、数据丢失。
