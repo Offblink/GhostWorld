@@ -20,8 +20,8 @@ DEFAULT_MAP2 = {
      "size_3d": 150, "width_3d": 0.2, "occlusion": "center"}
   ],
   "colors": {
-    "sky_top": [50, 20, 20], "sky_bottom": [80, 40, 40],
-    "floor": [50, 30, 30],
-    "walls": {"1": {"color": [120, 80, 80]}}
+    "sky_top": [220, 140, 80], "sky_bottom": [240, 200, 160],
+    "floor": [120, 80, 60],
+    "walls": {"1": {"color": [120, 100, 140]}}
   }
 }

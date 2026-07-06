@@ -27,12 +27,12 @@ DEFAULT_MAP = {
     {"x": 7.5, "y": 1.5, "kind": "portal", "id": "portal_north",
      "portal_target": {"portal_id": "portal_back", "map": "_default_map2.json"},
      "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 7.5, "y": 9.5, "kind": "item", "pickup": True, "pickup_label": "四处走走逛逛吧！",
-     "size_3d": 150, "width_3d": 0.2, "occlusion": "center"}
+    {"x": 7.5, "y": 4.5, "kind": "item", "pickup": True, "pickup_label": "四处走走逛逛吧！",
+     "size_3d": 80, "width_3d": 0.2, "occlusion": "center"}
   ],
   "colors": {
-    "sky_top": [20, 20, 50], "sky_bottom": [40, 40, 80],
-    "floor": [30, 30, 50],
-    "walls": {"1": {"color": [80, 80, 120]}}
+    "sky_top": [80, 140, 220], "sky_bottom": [160, 200, 240],
+    "floor": [60, 120, 60],
+    "walls": {"1": {"color": [140, 120, 100]}}
   }
 }
