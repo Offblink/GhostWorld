@@ -247,13 +247,13 @@ python editor.py [项目目录]
 ### 文件
 
 |文件|作用|
-|||
+|---|---|
 | `launch.py` | **一键启动**。同时启动服务器、人类客户端、agent |
 | `local_client.py` | **人类客户端**。pygame 渲染第一人称视角，WASD 移动，Enter 聊天，Space 暂停，M 小地图 |
 | `local_agent.py` | **Agent**。同进程运行，每 0.3s 检查 `agent_commands.jsonl` 并执行指令 |
 | `launch_config.json` | 启动配置：玩家名、agent 名、贴图路径 |
 
-###命令
+### 命令
 
 | 命令 | 说明 |
 |---|---|
