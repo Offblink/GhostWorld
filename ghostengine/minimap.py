@@ -35,47 +35,7 @@ def draw_minimap(
     agent_y: float | None = None,
     agent_angle: float | None = None,
 ) -> pygame.Rect:
-    """Draw a 2-D mini-map overlay onto *dst*.
-
-    Parameters
-    ----------
-    dst:
-        Destination surface (usually the screen).
-    grid:
-        2-D int array (0 = path, >0 = wall).
-    player_x, player_y, player_angle:
-        Current player position and yaw (radians, 0 = east).
-    entities:
-        Optional list of ``(x, y, color)`` tuples.
-    mm_size:
-        Size of the square mini-map in pixels.
-    margin:
-        Distance from the corner in pixels.
-    corner:
-        Which corner to anchor: ``"top_left"``, ``"top_right"``,
-        ``"bottom_left"``, ``"bottom_right"``.
-    bg_color:
-        RGBA fill colour for the map background.
-    wall_color:
-        Default colour for wall cells.
-    path_color:
-        Fill colour for path cells.
-    path_outline:
-        Outline colour for path cells.
-    player_color:
-        Colour of the player dot.
-    entity_color:
-        Default colour for entity dots (overridden per-entity if
-        colour is provided in the *entities* list).
-    wall_colors:
-        Optional lookup ``wall_type → colour`` for per-type wall
-        colouring (overrides *wall_color*).
-
-    Returns
-    -------
-    pygame.Rect
-        The bounding box of the rendered mini-map (useful for hit-testing).
-    """
+    """Draw a 2-D mini-map overlay onto *dst*."""
     sdw, sdh = dst.get_size()
     mm = pygame.Surface((mm_size, mm_size), pygame.SRCALPHA)
     pygame.draw.rect(mm, bg_color, mm.get_rect(), border_radius=5)
@@ -90,24 +50,14 @@ def draw_minimap(
             rect = pygame.Rect(ox + x * cell, oy + y * cell, cell, cell)
             val = int(grid[x, y])
             if val != 0:
-                wcol = wall_color
-                if wall_colors and val in wall_colors:
-                    wcol = wall_colors[val]
-                pygame.draw.rect(mm, wcol, rect)
+                wc = (wall_colors or {}).get(val, wall_color)
+                pygame.draw.rect(mm, wc, rect)
             else:
                 pygame.draw.rect(mm, path_color, rect)
                 pygame.draw.rect(mm, path_outline, rect, 1)
 
-    # player
-    pp = (int(ox + player_x * cell), int(oy + player_y * cell))
-    r = max(2, cell // 3)
-    pygame.draw.circle(mm, player_color, pp, r)
-    ex = pp[0] + int(math.cos(player_angle) * cell * 0.5)
-    ey = pp[1] + int(math.sin(player_angle) * cell * 0.5)
-    pygame.draw.line(mm, player_color, pp, (ex, ey), 1)
-
+    # agent flashlight cone — draw BEFORE player so player is visible
     cone_len = cell * 3.5
-    # agent flashlight cone (60° FOV, green)
     if agent_flashlight and agent_x is not None and agent_y is not None and agent_angle is not None:
         ap = (int(ox + agent_x * cell), int(oy + agent_y * cell))
         a_left = agent_angle - math.radians(30)
@@ -119,6 +69,14 @@ def draw_minimap(
         ]
         pygame.draw.polygon(mm, agent_flash_color, apts)
         pygame.draw.circle(mm, (0, 255, 100), ap, max(2, cell // 3))
+
+    # player (drawn on top of flashlight cone)
+    pp = (int(ox + player_x * cell), int(oy + player_y * cell))
+    r = max(2, cell // 3)
+    pygame.draw.circle(mm, player_color, pp, r)
+    ex = pp[0] + int(math.cos(player_angle) * cell * 0.5)
+    ey = pp[1] + int(math.sin(player_angle) * cell * 0.5)
+    pygame.draw.line(mm, player_color, pp, (ex, ey), 1)
 
     # entities
     if entities:
