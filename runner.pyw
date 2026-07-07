@@ -153,12 +153,7 @@ def run(path):
             dfont = chinese_font(28)
             sw = s.get_width()
             dsurf = dfont.render(dialogue_text, True, (255, 255, 200))
-            bg = pygame.Surface((dsurf.get_width()+40, dsurf.get_height()+20), pygame.SRCALPHA)
-            bg.fill((0,0,0,180))
-            bx = (sw - bg.get_width())//2
-            by = s.get_height() - bg.get_height() - 60
-            s.blit(bg, (bx, by))
-            s.blit(dsurf, (bx+20, by+10))
+            s.blit(dsurf, ((sw - dsurf.get_width())//2, s.get_height() - 100))
         elif dialogue_npc:
             prompt = chinese_font(20)
             psurf = prompt.render("按 E 对话", True, (255, 255, 150))
