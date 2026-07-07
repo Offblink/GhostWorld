@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QSplitter, QStatusBar, QTextBrowser, QToolBar, QVBoxLayout, QWidget,
 )
 from ghostengine import load_raw, save_raw
-from .model import EditorState, CmdEntity
+from .model import EditorState, CmdEntity, auto_pair_portals, generate_portal_id
 from .canvas import GridCanvas
 from .props import PropertyPanel
 from .templates import TEMPLATES
@@ -234,7 +234,6 @@ class EditorWindow(QMainWindow):
         # backward compat: migrate old "exit" field to portal entity
         ex = raw.get("exit")
         if ex and isinstance(ex, dict):
-            from .model import generate_portal_id
             portal_ent = {
                 "x": float(ex.get("x", 0)) + 0.5, "y": float(ex.get("y", 0)) + 0.5,
                 "kind": "portal",
@@ -286,8 +285,6 @@ class EditorWindow(QMainWindow):
 
     def _save_to(self, path):
         st = self.state
-        # Ensure all portal entities have an id
-        from .model import generate_portal_id
         for e in st.entities:
             if e.get("kind") == "portal" and not e.get("id"):
                 e["id"] = generate_portal_id(st.entities)
@@ -421,7 +418,8 @@ class EditorWindow(QMainWindow):
         if self.state.modified or not self.state.map_path:
             self._auto_save()
         if self.state.map_path:
-            r = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runner.pyw")
+            import ghostengine
+            r = os.path.join(os.path.dirname(os.path.abspath(ghostengine.__file__)), "runner.pyw")
             self._status.showMessage(f"正在启动 {os.path.basename(self.state.map_path)}...")
             import subprocess
             try:

@@ -175,15 +175,30 @@ def run(path):
     pygame.mouse.set_visible(True); pygame.quit()
 
 if __name__=="__main__":
-    _last = os.path.join(os.path.dirname(__file__), "examples", ".last_map")
+    import ghostengine
+    _pkg_dir = os.path.dirname(os.path.abspath(ghostengine.__file__))
+    _project_root = os.path.dirname(_pkg_dir)  # one level above ghostengine/
+
     if len(sys.argv) > 1:
         p = sys.argv[1]
-    elif os.path.isfile(_last):
-        try:
-            with open(_last) as f:
-                p = f.read().strip() or "examples/demo_metaverse.json"
-        except: p = "examples/demo_metaverse.json"
     else:
-        p = "examples/demo_metaverse.json"
-    if not os.path.isabs(p): p = os.path.join(os.path.dirname(__file__), p)
+        # Try .last_map in cwd first, then in project root, then fallback
+        _last_cwd = os.path.join(os.getcwd(), ".last_map")
+        _last_pkg = os.path.join(_project_root, "examples", ".last_map")
+        _last_file = _last_cwd if os.path.isfile(_last_cwd) else _last_pkg
+
+        if os.path.isfile(_last_file):
+            try:
+                with open(_last_file) as f:
+                    p = f.read().strip() or "examples/demo_metaverse.json"
+            except:
+                p = "examples/demo_metaverse.json"
+        else:
+            p = "examples/demo_metaverse.json"
+
+    if not os.path.isabs(p):
+        # Try cwd first, then project root
+        _cwd = os.path.join(os.getcwd(), p)
+        _pkg = os.path.join(_project_root, p)
+        p = _cwd if os.path.isfile(_cwd) else _pkg
     run(p)
