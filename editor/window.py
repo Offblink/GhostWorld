@@ -422,17 +422,19 @@ class EditorWindow(QMainWindow):
         dlg.exec()
 
     def _run_with_runner(self):
+        # Ensure map is saved — if unnamed, prompt the user first
         if self.state.modified or not self.state.map_path:
-            self._auto_save()
-        if self.state.map_path:
-            import ghostengine
-            r = os.path.join(os.path.dirname(os.path.abspath(ghostengine.__file__)), "runner.pyw")
-            self._status.showMessage(f"正在启动 {os.path.basename(self.state.map_path)}...")
-            import subprocess
-            try:
-                subprocess.Popen([sys.executable, r, os.path.abspath(self.state.map_path)], cwd=os.path.dirname(r))
-            except Exception as e:
-                QMessageBox.critical(self, "启动失败", f"无法启动查看器:\n{e}")
+            self._prompt_save()
+        if not self.state.map_path:
+            return  # user cancelled the save dialog
+        import ghostengine
+        r = os.path.join(os.path.dirname(os.path.abspath(ghostengine.__file__)), "runner.pyw")
+        self._status.showMessage(f"正在启动 {os.path.basename(self.state.map_path)}...")
+        import subprocess
+        try:
+            subprocess.Popen([sys.executable, r, os.path.abspath(self.state.map_path)], cwd=os.path.dirname(r))
+        except Exception as e:
+            QMessageBox.critical(self, "启动失败", f"无法启动查看器:\n{e}")
 
     def _resize_grid(self):
         dlg = QDialog(self); dlg.setWindowTitle("调整网格大小"); ly = QFormLayout(dlg)

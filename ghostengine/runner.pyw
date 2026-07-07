@@ -114,8 +114,6 @@ def run(path):
             for ent in entities:
                 if ent.kind != "portal":
                     continue
-                if not getattr(ent, 'portal_target', None):
-                    continue
                 dist = ((ctrl.x - ent.x)**2 + (ctrl.y - ent.y)**2)**0.5
                 if dist < 1.5:
                     dx = ent.x - ctrl.x; dy = ent.y - ctrl.y
