@@ -300,7 +300,6 @@ class EditorWindow(QMainWindow):
             st.modified = False
             self._update_title()
         except Exception as ex: QMessageBox.critical(self, "错误", f"保存失败:\n{ex}"); return
-        self.setWindowTitle(f"GhostWorld — {name}{mod}")
         auto_pair_portals(st.project_dir)
         # Apply defaults to any entities that lack them (no full reload needed)
         for e in st.entities:
