@@ -349,6 +349,13 @@ class EditorWindow(QMainWindow):
 <tr><td><b>传送门</b></td><td>放置传送门。右侧下拉框列出<b>项目内所有地图的全部传送门</b>，格式为 <code>[地图名] 传送门ID</code>。不能放在墙壁上。</td></tr>
 </table>
 
+<h2>🎨 画布图例</h2>
+<table>
+<tr><td><span style="color:#b450ff;">■</span> <b>紫色</b></td><td>传送门</td></tr>
+<tr><td><span style="color:#ffc832;">■</span> <b>金色</b></td><td>物品</td></tr>
+<tr><td><span style="color:#5096ff;">■</span> <b>蓝色</b></td><td>NPC / 精灵</td></tr>
+</table>
+
 <h2>🔗 传送门系统</h2>
 <ol>
 <li>在任意地图上放置传送门（自动分配 ID）。</li>

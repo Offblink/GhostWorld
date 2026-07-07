@@ -46,17 +46,24 @@ class GridCanvas(QWidget):
         for idx, ent in enumerate(st.entities):
             epx = int(ent["x"] * self.CELL_SIZE); epy = int(ent["y"] * self.CELL_SIZE)
             kind = ent.get("kind", "item")
+            sel = idx == st.selected_entity_idx
             if kind == "portal":
-                col = (0, 220, 220) if idx == st.selected_entity_idx else (0, 180, 180)
-                pygame.draw.circle(surf, col, (epx, epy), 6, 2 if idx == st.selected_entity_idx else 0)
+                col = (180, 80, 255) if sel else (140, 60, 220)
+                pygame.draw.circle(surf, col, (epx, epy), 6, 2 if sel else 0)
                 try:
                     font = pygame.font.SysFont("SimHei", 8)
-                    label = font.render("门", True, (0, 220, 220))
+                    label = font.render("门", True, (180, 80, 255))
                     surf.blit(label, label.get_rect(center=(epx, epy)))
                 except: pass
+            elif kind == "item":
+                col = (255, 200, 50) if sel else (200, 160, 30)
+                pygame.draw.circle(surf, col, (epx, epy), 4, 2 if sel else 0)
+            elif kind in ("avatar", "npc"):
+                col = (80, 150, 255) if sel else (50, 120, 220)
+                pygame.draw.circle(surf, col, (epx, epy), 5, 2 if sel else 0)
             else:
-                col = (255, 100, 255) if idx == st.selected_entity_idx else (255, 100, 100)
-                pygame.draw.circle(surf, col, (epx, epy), 5, 2 if idx == st.selected_entity_idx else 0)
+                col = (255, 100, 255) if sel else (255, 100, 100)
+                pygame.draw.circle(surf, col, (epx, epy), 4, 2 if sel else 0)
         raw = pygame.image.tostring(surf, "RGB")
         self._pm = QPixmap.fromImage(QImage(raw, pw, ph, QImage.Format_RGB888))
 
