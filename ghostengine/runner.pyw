@@ -175,30 +175,25 @@ def run(path):
     pygame.mouse.set_visible(True); pygame.quit()
 
 if __name__=="__main__":
-    import ghostengine
-    _pkg_dir = os.path.dirname(os.path.abspath(ghostengine.__file__))
-    _project_root = os.path.dirname(_pkg_dir)  # one level above ghostengine/
-
     if len(sys.argv) > 1:
         p = sys.argv[1]
     else:
-        # Try .last_map in cwd first, then in project root, then fallback
-        _last_cwd = os.path.join(os.getcwd(), ".last_map")
-        _last_pkg = os.path.join(_project_root, "examples", ".last_map")
-        _last_file = _last_cwd if os.path.isfile(_last_cwd) else _last_pkg
-
-        if os.path.isfile(_last_file):
+        _last = os.path.join(os.getcwd(), ".last_map")
+        if os.path.isfile(_last):
             try:
-                with open(_last_file) as f:
-                    p = f.read().strip() or "examples/demo_metaverse.json"
-            except:
-                p = "examples/demo_metaverse.json"
+                with open(_last) as f:
+                    p = f.read().strip()
+            except Exception:
+                p = ""
         else:
-            p = "examples/demo_metaverse.json"
+            p = ""
+        if not p:
+            print("[runner] 未指定地图文件。用法: python -m ghostengine.runner <map.json>", file=sys.stderr)
+            sys.exit(1)
 
     if not os.path.isabs(p):
-        # Try cwd first, then project root
-        _cwd = os.path.join(os.getcwd(), p)
-        _pkg = os.path.join(_project_root, p)
-        p = _cwd if os.path.isfile(_cwd) else _pkg
+        p = os.path.join(os.getcwd(), p)
+    if not os.path.isfile(p):
+        print(f"[runner] 地图文件不存在: {p}", file=sys.stderr)
+        sys.exit(1)
     run(p)
