@@ -37,10 +37,11 @@ def run(path):
     sens = 2.5
     full, mm, paused = False, False, False
 
-    # NPC dialogue state
+    # NPC dialogue / portal prompt state
     dialogue_npc = None
     dialogue_text = ""
     dialogue_time = 0.0
+    portal_near = False
 
     clock = pygame.time.Clock(); running = True
     while running:
@@ -106,6 +107,23 @@ def run(path):
                     while diff < -math.pi: diff += 2*math.pi
                     if abs(diff) < math.radians(60):
                         dialogue_npc = ent; break
+
+        # ── Portal proximity prompt ──
+        portal_near = False
+        if not dialogue_text:
+            for ent in entities:
+                if ent.kind != "portal":
+                    continue
+                if not getattr(ent, 'portal_target', None):
+                    continue
+                dist = ((ctrl.x - ent.x)**2 + (ctrl.y - ent.y)**2)**0.5
+                if dist < 1.5:
+                    dx = ent.x - ctrl.x; dy = ent.y - ctrl.y
+                    diff = math.atan2(dy, dx) - ctrl.angle
+                    while diff > math.pi: diff -= 2*math.pi
+                    while diff < -math.pi: diff += 2*math.pi
+                    if abs(diff) < math.radians(60):
+                        portal_near = True; break
         if dialogue_time > 0:
             dialogue_time -= dt
             if dialogue_time <= 0:
@@ -157,6 +175,15 @@ def run(path):
         elif dialogue_npc:
             prompt = chinese_font(20)
             psurf = prompt.render("按 E 对话", True, (255, 255, 150))
+            sw = s.get_width()
+            px = (sw - psurf.get_width())//2
+            py = s.get_height() - 50
+            s.blit(psurf, (px, py))
+
+        # ── HUD: portal prompt ──
+        if portal_near:
+            pfont = chinese_font(20)
+            psurf = pfont.render("请先打开服务器", True, (255, 200, 100))
             sw = s.get_width()
             px = (sw - psurf.get_width())//2
             py = s.get_height() - 50
