@@ -21,28 +21,12 @@ def _cache_path() -> str:
 
 
 def _local_version() -> str:
-    """Read version from installed pyproject.toml."""
-    import ghostengine
-    pkg_dir = os.path.dirname(os.path.abspath(ghostengine.__file__))
-    toml_path = os.path.join(os.path.dirname(pkg_dir), "pyproject.toml")
-    if not os.path.isfile(toml_path):
-        # Fallback: scan parent directories
-        d = pkg_dir
-        for _ in range(5):
-            d = os.path.dirname(d)
-            candidate = os.path.join(d, "pyproject.toml")
-            if os.path.isfile(candidate):
-                toml_path = candidate
-                break
+    """Read installed version via importlib.metadata."""
     try:
-        with open(toml_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("version"):
-                    return line.split("=")[1].strip().strip('"').strip("'")
+        from importlib.metadata import version
+        return version("ghostworld")
     except Exception:
-        pass
-    return "0.0.0"
+        return "0.0.0"
 
 
 def _remote_version() -> str | None:
