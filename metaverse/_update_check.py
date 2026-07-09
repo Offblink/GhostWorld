@@ -85,7 +85,9 @@ def check_update() -> None:
                 data = json.load(f)
             if now - data.get("last_check", 0) < CHECK_INTERVAL:
                 remote = data.get("remote")
-                if remote and _parse_version(remote) > _parse_version(local):
+                if remote is None:
+                    print(f"[GhostWorld] 无法检查更新 (v{local})", file=sys.stderr)
+                elif _parse_version(remote) > _parse_version(local):
                     _show_notification(local, remote)
                 else:
                     print(f"[GhostWorld] 当前已是最新版本 (v{local})", file=sys.stderr)
