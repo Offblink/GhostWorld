@@ -103,6 +103,8 @@ async def launch_all(map_path: str):
 
 
 def main():
+    from metaverse._update_check import check_update
+    check_update()
     args = _sys.argv[1:]
     map_path = DEMO_MAP
     for a in args:

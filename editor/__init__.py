@@ -23,6 +23,8 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
 
+    from metaverse._update_check import check_update
+    check_update()
     if len(sys.argv) > 1:
         project_dir = sys.argv[1]
     else:
