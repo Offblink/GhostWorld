@@ -67,51 +67,59 @@ def _parse_version(v: str) -> tuple[int, ...]:
 
 
 def _show_notification(local: str, remote: str) -> None:
-    """Show a popup or console message about the update."""
+    """Show a popup (if PySide6 available) AND print to terminal."""
     msg = (
-        f"GhostWorld 有新版本可用！\n\n"
-        f"当前版本: {local}\n"
-        f"最新版本: {remote}\n\n"
-        f"更新命令:\n"
-        f"pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git"
+        f"GhostWorld 有新版本可用！\n"
+        f"  当前版本: {local}\n"
+        f"  最新版本: {remote}\n"
+        f"  更新命令: pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git"
     )
 
+    # Always print to terminal
+    print(f"\n{'=' * 60}\n{msg}\n{'=' * 60}\n", file=sys.stderr)
+
+    # Try GUI popup
     try:
         from PySide6.QtWidgets import QApplication, QMessageBox
         app = QApplication.instance()
         if app is None:
             app = QApplication(sys.argv)
         QMessageBox.information(None, "GhostWorld 更新提醒", msg)
-        return
     except Exception:
         pass
 
-    print(f"\n{'=' * 60}\n{msg}\n{'=' * 60}\n", file=sys.stderr)
-
 
 def check_update() -> None:
-    """Check for updates. Skips if checked within the last 24 hours."""
+    """Check for updates. Skips network fetch if checked within 24h."""
     cache = _cache_path()
     now = time.time()
+    local = _local_version()
 
     try:
         if os.path.isfile(cache):
             with open(cache) as f:
                 data = json.load(f)
             if now - data.get("last_check", 0) < CHECK_INTERVAL:
+                remote = data.get("remote")
+                if remote and _parse_version(remote) > _parse_version(local):
+                    _show_notification(local, remote)
+                else:
+                    print(f"[GhostWorld] 当前已是最新版本 (v{local})", file=sys.stderr)
                 return
     except Exception:
         pass
 
-    local = _local_version()
     remote = _remote_version()
 
-    # Persist check time
     try:
         with open(cache, "w") as f:
             json.dump({"last_check": now, "local": local, "remote": remote}, f)
     except Exception:
         pass
 
-    if remote and _parse_version(remote) > _parse_version(local):
+    if remote is None:
+        print(f"[GhostWorld] 无法检查更新 (v{local})", file=sys.stderr)
+    elif _parse_version(remote) > _parse_version(local):
         _show_notification(local, remote)
+    else:
+        print(f"[GhostWorld] 当前已是最新版本 (v{local})", file=sys.stderr)
