@@ -68,11 +68,24 @@ Raycasting 3D engine + metaverse server + map editor + AI Agent platform.
 
 ## 安装
 
+**环境要求：Python 3.10 – 3.13。Python 3.14 暂不支持**（pygame 尚无预编译包）。
+
 ```bash
 pip install git+https://github.com/Offblink/GhostWorld.git
 ```
 
-需要 Python ≥ 3.10。依赖：`pygame`, `numpy`。编辑器额外需要 `PySide6`。
+依赖：`pygame`, `numpy`。编辑器额外需要 `PySide6`（`pip install ghostworld[editor]`）。
+
+### 常见安装问题
+
+| 症状 | 原因 | 解决 |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'distutils.msvccompiler'` | Python 3.14 移除了 distutils，pygame 尚未适配 | 降级到 Python 3.12 或 3.13 |
+| `SSL: UNEXPECTED_EOF_WHILE_READING` | 中国大陆网络无法直连 GitHub / SDL 下载源 | 设置代理 `set HTTPS_PROXY=http://127.0.0.1:7890` 后重试 |
+| `pygame.error: No available video device` | 无头环境（SSH / Docker / WSL 无桌面） | 确认有图形环境；纯命令行使用需装 `pygame` 后调用引擎 API 不创建窗口 |
+| pygame 源码编译失败 | 缺少 Visual Studio Build Tools | 先 `pip install pygame` 安装预编译 wheel，或安装 VS Build Tools |
+
+> **中国大陆用户建议**：如 `pip install git+https://` 速度极慢或超时，先设置代理再执行安装命令。
 
 ## 更新
 
