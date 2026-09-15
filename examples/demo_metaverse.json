@@ -1,35 +1,578 @@
 {
-  "version": 3,
-  "grid": [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,1,0,1,0,1,1,1,0,1,1,1,0,0,1],
-    [1,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1],
-    [1,0,1,1,1,1,0,1,0,1,1,1,1,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
-    [1,1,1,0,1,1,1,0,1,1,1,0,1,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,1,1,1,0,1,1,1,0,1,1,1,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-  ],
-  "player_spawn": {"x": 7.5, "y": 1.5, "angle": 1.57},
-  "entities": [
-    {"x": 14.5, "y": 7.5, "kind": "portal", "id": "portal_0",
-     "portal_target": null, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 3.5, "y": 5.5, "kind": "item", "pickup": true, "pickup_label": "金钥匙",
-     "size_3d": 140, "width_3d": 0.2, "occlusion": "center"},
-    {"x": 11.5, "y": 5.5, "kind": "item", "pickup": true, "pickup_label": "宝石",
-     "size_3d": 140, "width_3d": 0.2, "occlusion": "center"}
-  ],
-  "colors": {
-    "sky_top": [135, 206, 235], "sky_bottom": [240, 248, 255],
-    "floor": [34, 139, 34],
-    "walls": {"1": {"color": [100, 100, 150]}, "2": {"color": [50, 200, 100]}}
-  }
+    "version": 3,
+    "grid": [
+        [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            2,
+            0,
+            0,
+            3,
+            0,
+            0,
+            4,
+            0,
+            0,
+            5,
+            0,
+            0,
+            6,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            8,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            6,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            6,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            1,
+            1,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ],
+        [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+        ]
+    ],
+    "player_spawn": {
+        "x": 8.5,
+        "y": 5.5,
+        "angle": 4.71238898038469
+    },
+    "entities": [
+        {
+            "x": 8.5,
+            "y": 8.5,
+            "kind": "avatar",
+            "name": "Blinvo",
+            "owner": "",
+            "facing": 4.71238898038469,
+            "use_facing": false,
+            "dialogue": "……你也听见了？门在更深处。别回头。",
+            "size_3d": 800,
+            "width_3d": 0.8,
+            "anim": {
+                "pulse": {
+                    "speed": 0.002,
+                    "amp": 0.08
+                }
+            },
+            "occlusion": "per_column",
+            "metadata": {
+                "note": "NPC：走近按 E 触发 dialogue；Avatar 也能带动画"
+            }
+        },
+        {
+            "x": 3.5,
+            "y": 4.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "可拾取物品",
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "pickup=true + pickup_label"
+            }
+        },
+        {
+            "x": 8.5,
+            "y": 4.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "悬浮 float",
+            "anim": {
+                "float": {
+                    "speed": 0.003,
+                    "amp": 0.05
+                }
+            },
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "anim.float"
+            }
+        },
+        {
+            "x": 12.5,
+            "y": 4.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "脉动 pulse",
+            "anim": {
+                "pulse": {
+                    "speed": 0.004,
+                    "amp": 0.3
+                }
+            },
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "anim.pulse"
+            }
+        },
+        {
+            "x": 3.5,
+            "y": 7.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "旋转 rotation",
+            "anim": {
+                "rotation": {
+                    "speed": 0.002
+                }
+            },
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "anim.rotation"
+            }
+        },
+        {
+            "x": 12.5,
+            "y": 7.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "逐列遮挡",
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "per_column",
+            "metadata": {
+                "note": "occlusion=per_column（贴柱子时按列遮挡）"
+            }
+        },
+        {
+            "x": 3.5,
+            "y": 10.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "中心遮挡",
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "occlusion=center"
+            }
+        },
+        {
+            "x": 12.5,
+            "y": 10.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "归属 Blinvo",
+            "capture_for": "Blinvo",
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "capture_for：指定谁能收走它"
+            }
+        },
+        {
+            "x": 5.5,
+            "y": 13.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "带 metadata",
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "metadata 是留给外部工具的自由字段"
+            }
+        },
+        {
+            "x": 7.5,
+            "y": 13.5,
+            "kind": "item",
+            "invisible": true,
+            "mm_trigger": true,
+            "size_3d": 1,
+            "width_3d": 0.1,
+            "occlusion": "center",
+            "metadata": {
+                "note": "invisible + mm_trigger：隐形实体 + 小地图触发开关位（客户端目前只透传）"
+            }
+        },
+        {
+            "x": 10.5,
+            "y": 13.5,
+            "kind": "item",
+            "pickup": true,
+            "pickup_label": "三动画叠加",
+            "anim": {
+                "float": {
+                    "speed": 0.003,
+                    "amp": 0.04
+                },
+                "pulse": {
+                    "speed": 0.005,
+                    "amp": 0.2
+                },
+                "rotation": {
+                    "speed": 0.0015
+                }
+            },
+            "size_3d": 140,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "float + pulse + rotation 可叠加"
+            }
+        },
+        {
+            "x": 13.5,
+            "y": 13.5,
+            "kind": "portal",
+            "id": "tp_A",
+            "portal_target": {
+                "portal_id": "tp_B",
+                "map": "demo_metaverse2.json"
+            },
+            "size_3d": 150,
+            "width_3d": 0.2,
+            "occlusion": "center",
+            "metadata": {
+                "note": "portal：配对在 demo_metaverse2.json 的 tp_B"
+            }
+        }
+    ],
+    "colors": {
+        "sky_top": [
+            26,
+            28,
+            44
+        ],
+        "sky_bottom": [
+            116,
+            132,
+            128
+        ],
+        "floor": [
+            58,
+            66,
+            60
+        ],
+        "walls": {
+            "1": {
+                "color": [
+                    92,
+                    98,
+                    112
+                ]
+            },
+            "2": {
+                "color": [
+                    104,
+                    132,
+                    108
+                ]
+            },
+            "3": {
+                "color": [
+                    96,
+                    78,
+                    62
+                ]
+            },
+            "4": {
+                "color": [
+                    118,
+                    124,
+                    136
+                ]
+            },
+            "5": {
+                "color": [
+                    116,
+                    72,
+                    76
+                ]
+            },
+            "6": {
+                "color": [
+                    92,
+                    128,
+                    136
+                ]
+            },
+            "7": {
+                "color": [
+                    154,
+                    138,
+                    92
+                ]
+            },
+            "8": {
+                "color": [
+                    44,
+                    48,
+                    58
+                ]
+            }
+        }
+    },
+    "minimap": {
+        "mode": "always",
+        "duration": 0
+    }
 }

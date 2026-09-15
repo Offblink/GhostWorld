@@ -83,7 +83,16 @@ Raycasting 3D engine + metaverse server + map editor + AI Agent platform.
 pip install git+https://github.com/Offblink/GhostWorld.git
 ```
 
-依赖：`pygame`, `numpy`。编辑器额外需要 `PySide6`（`pip install ghostworld[editor]`）。
+依赖：`pygame`, `numpy`——上面那条命令会**自动装**（`pip install -e . --no-deps` 那种才要自己补）。
+编辑器额外需要 `PySide6`：`pip install "ghostworld[editor] @ git+https://github.com/Offblink/GhostWorld.git"`，
+或在克隆目录里 `pip install -e ".[editor]"`（`[full]` 再加 Pillow）。
+
+装完先跑一次它：会打印**装在哪儿、运行时往哪儿写**（装在 Program Files 这类只读位置会起不来，这里一眼看得出），
+以及**该填进 Fungi 的 `ghostworld_dir` 那一行**：
+
+```bash
+ghostworld --where          # 等价：python -m metaverse.launch --where
+```
 
 ### 常见安装问题
 
@@ -119,10 +128,20 @@ pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWo
 ```bash
 python -m metaverse.launch                        # 默认地图
 python -m metaverse.launch my_map.json             # 指定地图
-python launcher.py                                 # GUI 启动器（需 PySide6）
+python launcher.pyw                                # GUI 启动器（需 PySide6）
 python headless_player.py                          # 无头联调：服务 + 一个会说活的玩家
 python headless_player.py my_map.json --say 你好 --after 3
 ```
+
+`examples/` 里有两张**互相配对**的 demo 图（`demo_metaverse.json` ↔ `demo_metaverse2.json`）：走到门口就会被送到对面那张的门口，
+再走回去也能回来。
+
+其中 `demo_metaverse.json` 是一张**元素样板图**：16×16，三进的室内（每进之间一道墙、各留一个窄门），一进摆 8 种
+墙型（各一块，交错成两排）、二进是内柱与物品、三进深处才到那扇门。元素覆盖：可拾取物品与 `pickup_label`、三种动画
+（`float` / `pulse` / `rotation`）、两种遮挡（`center` / `per_column`）、`capture_for`、`metadata`、隐形实体、
+带 `dialogue` 的 NPC。配色是它自己那套夜雾幽绿（天空/地板/八种墙色都与隔壁那张不同）。没有贴图资源，实体按引擎的
+几何画法渲染；那扇门通 `demo_metaverse2.json`——对面是一间 10×10 的明亮小房间（亮天蓝 + 亮草绿），
+里面只有一扇回程门，走回去就回到这里。
 
 
 ### Agent 控制（通道）
@@ -138,8 +157,11 @@ ghostworld-wait --timeout 25                       # 阻塞：玩家一发言就
 ghostworld-wait --all --follow                     # 常驻观察者（含 see/goto_done 等非唤醒事件）
 ```
 
+两个 CLI 的 stdin/stdout/stderr 一律 **UTF-8**（与 Windows 控制台代码页无关），事件行一出就落地——
+逐行读、直接按 UTF-8 解码即可，中文不会变乱码。
+
 **唤醒语义**：Agent 常驻 `ghostworld-wait`，玩家发言即被唤醒；不发言时零开销（阻塞在 socket 上，
-不轮询、不烧 CPU、不烧 token）。思考期间玩家说的第二句会在通道里排队，下次 `wait` 一次性拿到。
+不轮询、不烧 CPU、不烧 token）。思考期间玩家说的第二句会在通道里排队，下次 `wait` 一次性拿到。玩家按下空格暂停、或正在聊天输入框里打字时，客户端不跑帧循环，**命令会被当场回绝**（`{"type":"error","reason":…}`，退出码仍是 0）——那是暂停，不是通道坏了。
 
 | 退出码 | `ghostworld-send` | `ghostworld-wait` |
 |---|---|---|
@@ -199,7 +221,8 @@ python metaverse/tools/listen.py              # 持续 tail（默认每 5 秒）
 | 鼠标 | 转动视角 |
 | `M` | 小地图开关 |
 | `F` | 全屏切换 |
-| `Enter` | 打开聊天输入框 |
+| `Enter` | 打开聊天输入框（打字期间世界与命令通道一起暂停） |
+| `Space` | 暂停 / 继续（屏幕中间显示 PAUSED；暂停期间 Agent 的命令会被回绝） |
 | `L` | Agent 手电筒开关（小地图绿色锥形光照，默认开） |
 | `Esc` | 退出 |
 
@@ -235,7 +258,7 @@ render(frame, surface)
 ## 地图编辑器
 
 ```bash
-python editor.py [项目目录]
+python editor.pyw [项目目录]
 ```
 
 ### 左侧栏
@@ -330,7 +353,7 @@ python editor.py [项目目录]
 | `pickup` | 远程拾取：`x`,`y`（必填），可选 `item_id` |
 | `place` | 从背包取出物品放到指定坐标 |
 | `give` | 从背包取出物品丢脚下，设 capture_for |
-| `snapshot` | 拍照存 snapshots/ 目录 |
+| `snapshot` | 从角色自己的位置与朝向前视渲染一张 PNG（天空 / 地面 / 建筑 / 视野里的人），存 `snapshots/`；ack 回 `{"type":"snapshot_done","local":"<路径>"}` |
 | `post_issue` | 拍照并发 GitHub Issue（需设 `GHOSTENGINE_REPO` 环境变量） |
 | `dump_map` | **调试**：矩阵格式输出完整地图状态 |
 | `edit_map` | 批量编辑：`set_cell` / `set_grid` / `set_color` / `reload_maps` |
@@ -362,7 +385,8 @@ python editor.py [项目目录]
 pytest tests/ -q --ignore=tests/scratch
 ```
 
-137 个测试，覆盖引擎渲染、实体投影、碰撞检测、地图 I/O、WorldState、Server 协议、跨地图传送、传送门配对/取消/重配对、编辑器验证（越界清理/墙壁重叠）、Item 深拷贝隔离，以及 Agent 通道（事件总线游标/容量/并发、服务端线程边界、端到端唤醒与排队、旧文件通道兼容、listen 游标轮转/重启）。
+154 个测试，覆盖引擎渲染、实体投影、碰撞检测、地图 I/O、WorldState、Server 协议、跨地图传送、传送门配对/取消/重配对、编辑器验证（越界清理/墙壁重叠）、Item 深拷贝隔离，以及 Agent 通道（事件总线游标/容量/并发、服务端线程边界、端到端唤醒与排队、
+暂停或打字时的诚实回绝、跟随子进程的 flush 与 UTF-8 编码、旧文件通道兼容、listen 游标轮转/重启、`goto` 到脚下坐标不再除零崩帧循环、安装布局与单实例锁的辨识）。
 
 ```bash
 ruff check .                    # 代码门禁（配置在 pyproject.toml）
