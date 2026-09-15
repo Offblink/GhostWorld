@@ -182,6 +182,13 @@ def main():
         print("[ghostworld] 如已安装仍报错，检查 Python 版本是否在 3.10–3.13 之间。")
         _sys.exit(1)
 
+def _print_startup_paths() -> None:
+    """Every start says which copy this is and where it writes (see _paths)."""
+    from metaverse._paths import startup_lines
+    for line in startup_lines():
+        print(f"[launcher] {line}")
+
+
 def _run():
     args = _sys.argv[1:]
     if "--where" in args:
@@ -221,8 +228,7 @@ def _run():
         print("[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
     print("[launcher] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
-    from metaverse._paths import brief
-    print(f"[launcher] {brief()}")
+    _print_startup_paths()
 
     _acquire_lock()
     asyncio.run(launch_all(mp))

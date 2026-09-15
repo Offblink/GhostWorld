@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QColor, QKeySequence, QUndoStack
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QColorDialog, QComboBox, QDialog, QDialogButtonBox,
-    QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QSpinBox,
+    QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QSpinBox,
     QSplitter, QStatusBar, QTextBrowser, QVBoxLayout, QWidget,
 )
 from ghostengine import load_raw, save_raw
@@ -97,6 +97,13 @@ class EditorWindow(QMainWindow):
         rw = QWidget(); rw.setLayout(right); splitter.addWidget(rw)
         splitter.setSizes([180, 750, 320]); hly.addWidget(splitter, 1); outer.addLayout(hly, 1)
         self._status = QStatusBar(); self.setStatusBar(self._status)
+        # 这个入口（editor.pyw）没有控制台：路径常驻在状态栏右侧，悬停给出全量（同 --where）
+        from metaverse._paths import PACKAGE_DIR, describe
+        self._paths_label = QLabel(f"项目 {project_dir}   代码 {PACKAGE_DIR}")
+        self._paths_label.setStyleSheet("color:#888; font-size:11px")
+        self._paths_label.setContentsMargins(0, 0, 10, 0)
+        self._paths_label.setToolTip("\n".join(describe()))
+        self._status.addPermanentWidget(self._paths_label)
         self._refresh_timer = QTimer(self); self._refresh_timer.timeout.connect(self._refresh_ui)
         self._refresh_timer.start(200)  # refresh UI every 200ms
         self._autosave_timer = QTimer(self); self._autosave_timer.timeout.connect(self._tick_autosave)

@@ -4,6 +4,10 @@ Select player texture, name, and owner before launching.
 """
 import os, sys, json, subprocess
 
+ROOT_EARLY = os.path.dirname(os.path.abspath(__file__))
+if ROOT_EARLY not in sys.path:
+    sys.path.insert(0, ROOT_EARLY)
+
 try:
     from PySide6.QtWidgets import (
         QApplication, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -14,7 +18,9 @@ except ImportError:
     print("PySide6 required: pip install PySide6")
     sys.exit(1)
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+from metaverse._paths import startup_lines  # noqa: E402  (needs ROOT_EARLY on sys.path)
+
+ROOT = ROOT_EARLY
 _last = os.path.join(ROOT, "examples", ".last_map")
 _default = os.path.join(ROOT, "examples", "demo_metaverse.json")
 DEFAULT_MAP = _default
@@ -31,7 +37,7 @@ class LauncherDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("GhostEngine Metaverse Launcher")
-        self.setFixedSize(500, 420)
+        self.setFixedSize(500, 560)
 
         ly = QVBoxLayout(self)
         ly.setSpacing(16)
@@ -71,6 +77,16 @@ class LauncherDialog(QDialog):
         btn = QPushButton("浏览..."); btn.clicked.connect(self._browse_map); map_row.addWidget(btn)
         mfl.addRow("地图:", map_row)
         ly.addWidget(mg)
+
+        # ── 路径：这个入口是 .pyw，没有控制台，路径只能显示在窗口上 ──
+        pg_paths = QGroupBox("路径")
+        pv = QVBoxLayout(pg_paths)
+        self._paths_label = QLabel("\n".join(startup_lines()))
+        self._paths_label.setWordWrap(True)
+        self._paths_label.setStyleSheet("color:#666; font-size:11px")
+        self._paths_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pv.addWidget(self._paths_label)
+        ly.addWidget(pg_paths)
 
         ly.addStretch()
         # ── Buttons ──

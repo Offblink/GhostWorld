@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -21,11 +22,30 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = PACKAGE_DIR.parent
 
 
-def version_string() -> str:
+def _source_version() -> str | None:
+    """The version this checkout declares, if we are running from a checkout.
+
+    The installed metadata lags until the next `pip install`, and this line
+    exists to say which copy is running — so it must not lag with it.
+    """
+    pyproject = ROOT_DIR / "pyproject.toml"
     try:
-        return version("ghostworld")
+        text = pyproject.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
+    return match.group(1) if match else None
+
+
+def version_string() -> str:
+    source = _source_version()
+    try:
+        installed = version("ghostworld")
     except PackageNotFoundError:
-        return "unknown (not installed — a source checkout?)"
+        return source or "unknown (not installed — a source checkout?)"
+    if source and source != installed:
+        return f"{source}（装的是 {installed}，跑的是源码 —— pip install -e . 可同步）"
+    return source or installed
 
 
 def runtime_paths() -> dict[str, Path]:
@@ -71,6 +91,31 @@ def _writable(target: Path) -> bool:
 
 def installed_layout() -> str:
     return "源码检出" if (ROOT_DIR / "pyproject.toml").is_file() else "site-packages 安装"
+
+
+def startup_lines(extra: dict[str, Path] | None = None) -> list[str]:
+    """The paths every entry point shows on start.
+
+    `--where` answers the question in full, but it has to be asked for; this is
+    the part that is worth seeing without asking: which copy is running, and
+    which files it will write. The GUI entry points have no console
+    (`launcher.pyw`, `editor.pyw` are `.pyw`), so they render these lines in
+    the window instead of printing them.
+
+    *extra* adds paths an entry point owns rather than the game (the editor's
+    project directory).
+    """
+    extra = extra or {}
+    lines = [
+        f"GhostWorld {version_string()}   [{installed_layout()}]",
+        f"代码目录   {PACKAGE_DIR}",
+        f"安装根     {ROOT_DIR}",
+    ]
+    for name, path in list(runtime_paths().items()) + list(extra.items()):
+        lines.append(f"  {'✓' if _writable(path) else '✗'} {name:<9} {path}")
+    if any(not _writable(p) for p in list(runtime_paths().values()) + list(extra.values())):
+        lines.append("  有路径不可写 —— 换用户级安装（别装进 Program Files）；详见 python -m metaverse._paths")
+    return lines
 
 
 def brief() -> str:

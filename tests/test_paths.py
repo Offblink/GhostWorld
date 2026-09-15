@@ -88,3 +88,56 @@ def test_the_launcher_answers_where_without_touching_the_network(monkeypatch, ca
     out = capsys.readouterr().out
     assert str(PACKAGE) in out
     assert "运行时写入" in out
+
+
+def test_startup_lines_carry_the_paths_the_windows_show():
+    """Every entry point shows these on start — GUI ones have no console."""
+    lines = _paths.startup_lines({"项目": Path("X:/proj")})
+    text = "\n".join(lines)
+    assert str(_paths.PACKAGE_DIR) in text and str(_paths.ROOT_DIR) in text
+    for name, path in _paths.runtime_paths().items():
+        assert name in text and str(path) in text, f"{name} missing from the startup block"
+    assert "项目" in text, "an entry point's own path must show up too"
+
+
+def test_the_launcher_prints_the_paths_on_every_start(capsys):
+    from metaverse import launch
+
+    launch._print_startup_paths()
+
+    out = capsys.readouterr().out
+    assert str(_paths.PACKAGE_DIR) in out
+    assert str(_paths.ROOT_DIR) in out
+    assert out.count("[launcher]") >= 4, "the block is printed line by line, prefixed"
+
+
+def test_the_editor_window_shows_the_paths_without_asking(tmp_path):
+    """The editor is a .pyw — no console — so the paths go into the window."""
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from editor.window import EditorWindow
+
+    app = QApplication.instance() or QApplication([])
+    win = EditorWindow(project_dir=str(tmp_path))
+    try:
+        shown = win._paths_label.text()
+        assert str(tmp_path) in shown, "the project directory must be visible"
+        assert str(_paths.PACKAGE_DIR) in shown, "which copy is running must be visible"
+        tooltip = win._paths_label.toolTip()
+        assert str(_paths.ROOT_DIR) in tooltip and "运行时写入" in tooltip
+    finally:
+        win.close()
+        app.processEvents()
+
+
+def test_the_reported_version_is_the_one_this_checkout_declares():
+    """The banner says which copy runs, so it cannot report stale metadata."""
+    import re as _re
+
+    declared = _re.search(r'^version\s*=\s*"([^"]+)"',
+                          (_paths.ROOT_DIR / "pyproject.toml").read_text(encoding="utf-8"), _re.M).group(1)
+    assert _paths.version_string().startswith(declared)
+    assert declared in "\n".join(_paths.startup_lines())
+

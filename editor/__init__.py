@@ -18,6 +18,8 @@ except ImportError:
 
 
 def main():
+    from pathlib import Path
+
     from .window import EditorWindow
 
     app = QApplication(sys.argv)
@@ -30,6 +32,9 @@ def main():
     else:
         project_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
 
+    from metaverse._paths import startup_lines
+    for line in startup_lines({"项目": Path(project_dir)}):
+        print(f"[editor] {line}")
     w = EditorWindow(project_dir)
     w.show()
     sys.exit(app.exec())
