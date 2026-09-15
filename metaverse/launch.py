@@ -16,10 +16,18 @@ import asyncio
 import json
 import os
 
+from metaverse._paths import (
+    examples_dir,
+    launch_config_file,
+    lock_file,
+    runtime_dir,
+    seed_examples,
+)
 
 
 
-LOCK_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".instance.lock")
+
+LOCK_FILE = str(lock_file())
 
 
 def _process_identity(pid: int) -> tuple[str, float] | None:
@@ -110,10 +118,52 @@ def _acquire_lock() -> bool:
 def _resolve_map(path: str) -> str:
     if os.path.isabs(path):
         return path
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(root, path)
+    # Relative map paths — and `examples/...` in particular — resolve against the
+    # directory that holds `examples/`: the checkout root, or the app directory
+    # of a frozen build where the maps were seeded.
+    return os.path.join(str(examples_dir().parent), path)
 
 
+DEMO_MAP_NAME = "demo_metaverse.json"
+
+
+def default_map() -> str:
+    """The map to open when none was named: the last one used, else the demo.
+
+    Seeding happens here rather than at import: it writes the user's directory,
+    and importing a module must not.
+    """
+    examples = seed_examples()
+    try:
+        chosen = (examples / ".last_map").read_text(encoding="utf-8").strip()
+        if chosen and os.path.isfile(chosen):
+            return chosen
+    except OSError:
+        pass
+    return str(examples / DEMO_MAP_NAME)
+
+def _write_builtin_maps() -> str:
+    """The maps compiled into the code, written out when the named one is gone.
+
+    They go to the runtime directory, not a temp directory: the game saves
+    `states/` beside a map, and a temp directory is wiped between runs — the
+    world would reset and the maps would be re-created every launch.
+    """
+    import json
+
+    from ghostengine._default_map import DEFAULT_MAP
+    from ghostengine._default_map2 import DEFAULT_MAP2
+
+    out = runtime_dir() / "builtin_maps"
+    out.mkdir(parents=True, exist_ok=True)
+    mp = out / "_default_map.json"
+    with open(mp, "w", encoding="utf-8") as f:
+        json.dump(DEFAULT_MAP, f, indent=2, ensure_ascii=False)
+    with open(out / "_default_map2.json", "w", encoding="utf-8") as f:
+        json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
+    print("[launcher] Using default demo maps")
+    print("[launcher] Tip: ghostworld-editor to create your own maps!")
+    return str(mp)
 
 
 async def _start_client(name: str, map_path: str, texture: str = ""):
@@ -123,17 +173,6 @@ async def _start_client(name: str, map_path: str, texture: str = ""):
     client = LocalClient(srv_mod._current_ws, srv_mod._current_ctx, name, map_path, texture)
     await client.run()
 
-
-
-DEMO_MAP = "examples/demo_metaverse.json"
-_last_map_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples", ".last_map")
-if os.path.isfile(_last_map_path):
-    try:
-        with open(_last_map_path) as f:
-            p = f.read().strip()
-            if p and os.path.isfile(p):
-                DEMO_MAP = p
-    except: pass
 
 async def launch_all(map_path: str):
     mp = _resolve_map(map_path)
@@ -146,7 +185,7 @@ async def launch_all(map_path: str):
     agent_task = None
     try:
         # Read GUI launcher config if present
-        _cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "metaverse", "launch_config.json")
+        _cfg_path = str(launch_config_file())
         _cfg = {}
         if os.path.isfile(_cfg_path):
             with open(_cfg_path, encoding="utf-8") as f:
@@ -173,6 +212,11 @@ async def launch_all(map_path: str):
 
 
 def main():
+    from metaverse._branding import claim_taskbar_identity
+    from metaverse._paths import utf8_stdio
+
+    utf8_stdio()               # the startup block prints ✓/✗, pipes are not UTF-8 by default
+    claim_taskbar_identity()   # before the pygame window: taskbar grouping
     try:
         _run()
     except ImportError as e:
@@ -199,7 +243,7 @@ def _run():
         return
     from metaverse._update_check import check_update
     check_update()
-    map_path = DEMO_MAP
+    map_path = default_map()
     for a in args:
         if a.endswith(".json"):
             map_path = a
@@ -208,25 +252,14 @@ def _run():
     if "--help" in args or "-h" in args:
         print(__doc__)
         print("Options:")
-        print("  <map.json>       map file (default: examples/demo_metaverse.json)")
+        print("  <map.json>       map file (default: the last one played, else the demo map)")
         print("  --where          print where this copy is installed and what it writes")
         print("  --help, -h       show this help")
         return
 
     mp = _resolve_map(map_path)
     if not os.path.isfile(mp):
-        import json, tempfile
-        from ghostengine._default_map import DEFAULT_MAP
-        from ghostengine._default_map2 import DEFAULT_MAP2
-        tmp_dir = tempfile.mkdtemp(prefix="ghostworld_")
-        mp = os.path.join(tmp_dir, "_default_map.json")
-        map2_path = os.path.join(tmp_dir, "_default_map2.json")
-        with open(mp, 'w', encoding='utf-8') as f:
-            json.dump(DEFAULT_MAP, f, indent=2, ensure_ascii=False)
-        with open(map2_path, 'w', encoding='utf-8') as f:
-            json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
-        print("[launcher] Using default demo maps")
-        print("[launcher] Tip: ghostworld-editor to create your own maps!")
+        mp = _write_builtin_maps()
     print("[launcher] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
     _print_startup_paths()
 

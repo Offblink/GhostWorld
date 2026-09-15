@@ -16,7 +16,6 @@ Exit codes (part of the contract, see docs/PROTOCOL-agent-channel.md):
 """
 from __future__ import annotations
 
-import contextlib
 import json
 import sys
 
@@ -27,6 +26,8 @@ from .channel_client import (
     ChannelUnavailable,
     NoAck,
 )
+
+from ._paths import utf8_stdio
 
 EXIT_OK = 0
 EXIT_NO_ACK = 1
@@ -40,23 +41,6 @@ _USAGE = {
     "wait": ("usage: ghostworld-wait [--timeout SECONDS] [--after SEQ] "
              "[--kinds wake,observation] [--all] [--follow]"),
 }
-
-
-def utf8_stdio() -> None:
-    """Pin this CLI's own pipes to UTF-8 — what every consumer assumes.
-
-    The line JSON is UTF-8 on the socket, and a watcher decodes this process's
-    stdout as UTF-8 as well (`subprocess(..., text=True, encoding="utf-8")`).
-    Launched by a GUI — no PYTHONUTF8/PYTHONIOENCODING — the child would instead
-    use the console code page (cp936 on this box), so the player's 你好 reached
-    the agent as U+FFFD mojibake and the agent's own reply came back mangled
-    (2026-09-15 real-machine report).
-    """
-    for stream in (sys.stdin, sys.stdout, sys.stderr):
-        if (getattr(stream, "encoding", "") or "").lower().replace("-", "") == "utf8":
-            continue  # already there (a harness that exports PYTHONUTF8) — no work
-        with contextlib.suppress(Exception):  # in-process use, or a replaced stream
-            stream.reconfigure(encoding="utf-8")
 
 
 def send_main(argv: list[str] | None = None) -> int:

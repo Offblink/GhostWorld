@@ -83,7 +83,7 @@ def poll() -> list[str]:
 
 
 def main():
-    from ..cli_channel import utf8_stdio
+    from .._paths import utf8_stdio
 
     utf8_stdio()  # player lines are Chinese: never encode them with the code page
     if os.path.exists(LEGACY_STATE_FILE):

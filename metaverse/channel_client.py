@@ -22,15 +22,19 @@ import json
 import os
 import socket
 
+from ._paths import runtime_paths
+
 PROTOCOL = 1
 DEFAULT_WAIT_TIMEOUT = 25.0
 DEFAULT_ACK_TIMEOUT = 15.0
 HANDSHAKE_TIMEOUT = 5.0
 MAX_LINE = 1 << 20
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_CHANNEL_FILE = os.path.join(_HERE, ".channel.json")
-DEFAULT_CURSOR_FILE = os.path.join(_HERE, ".wait_cursor.json")
+# The game writes these where it runs (see `_paths.runtime_dir`): beside the code
+# in a checkout, under the user's app directory in a frozen build.
+_PATHS = runtime_paths()
+DEFAULT_CHANNEL_FILE = str(_PATHS["channel"])
+DEFAULT_CURSOR_FILE = str(_PATHS["cursor"])
 
 
 class ChannelUnavailable(RuntimeError):

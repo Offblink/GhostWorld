@@ -25,6 +25,7 @@ import threading
 import time
 
 from .channel import EventBus, PendingCommand
+from ._paths import runtime_paths
 
 PROTOCOL = 1
 HOST = "127.0.0.1"
@@ -33,7 +34,8 @@ ACK_TIMEOUT = 10.0
 HELLO_TIMEOUT = 5.0
 MAX_LINE = 1 << 20
 
-CHANNEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".channel.json")
+# One location for the game and for every reader (see `_paths.runtime_dir`).
+CHANNEL_FILE = str(runtime_paths()["channel"])
 
 __all__ = [
     "ChannelServer", "start", "open_channel", "close_channel",

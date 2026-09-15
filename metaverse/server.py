@@ -12,6 +12,7 @@ import os
 import queue
 import time
 
+from ._paths import runtime_paths
 from ._shared import process_agent_command
 from .channel import KIND_OBSERVATION, KIND_WAKE, EventBus, PendingCommand
 from .world import WorldState
@@ -268,7 +269,7 @@ def handle_message(ws: WorldState, avatar_id: str, msg: dict) -> dict:
         caption = msg.get("caption", "")
         try:
             png_bytes = _take_snapshot(ws, avatar_id)
-            snap_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "snapshots")
+            snap_dir = str(runtime_paths()["snapshots"])
             os.makedirs(snap_dir, exist_ok=True)
             ts = int(time.time())
             safe_name = "".join(c for c in avatar_id if c.isalnum() or c in "_-")[:20]

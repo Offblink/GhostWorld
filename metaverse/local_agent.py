@@ -16,10 +16,11 @@ import json
 import os
 
 from .channel import FileSink, PendingCommand
+from ._paths import runtime_paths
 
-_DIR = os.path.dirname(os.path.abspath(__file__))
-CMD_FILE = os.path.join(_DIR, "agent_commands.jsonl")
-LOG_FILE = os.path.join(_DIR, "agent_output.jsonl")
+_PATHS = runtime_paths()
+CMD_FILE = str(_PATHS["commands"])
+LOG_FILE = str(_PATHS["log"])
 POLL_INTERVAL = 0.3
 
 

@@ -37,6 +37,38 @@ def test_reported_paths_sit_beside_the_package():
     assert paths["snapshots"] == PACKAGE.parent / "snapshots"
 
 
+def test_a_frozen_install_writes_into_the_users_directory(monkeypatch, tmp_path):
+    """A packed exe cannot write beside its code — Program Files is read-only and a
+    one-file build unpacks into a directory that is deleted on exit. Everything
+    writable moves under %LOCALAPPDATA%, and the demo maps are seeded where the
+    game can open them *and* save `states/` next to them."""
+    bundle = tmp_path / "bundle"
+    (bundle / "examples").mkdir(parents=True)
+    (bundle / "examples" / "demo_metaverse.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(bundle), raising=False)
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "GhostWorld.exe"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+
+    runtime = tmp_path / "Local" / "GhostWorld"
+    assert _paths.runtime_dir() == runtime
+    assert _paths.app_dir() == tmp_path, "the install root is the exe's folder"
+    assert _paths.installed_layout() == "打包 exe"
+    paths = _paths.runtime_paths()
+    assert paths["channel"].parent == runtime and paths["log"].parent == runtime
+    assert paths["snapshots"] == runtime / "snapshots", "never writes into the bundle"
+    assert all(str(p).startswith(str(tmp_path)) for p in paths.values())
+
+    seeded = _paths.seed_examples()
+    assert seeded == runtime / "examples"
+    assert (seeded / "demo_metaverse.json").is_file(), "the shipped maps must be copied out"
+
+    (seeded / "demo_metaverse.json").write_text('{"edited": true}', encoding="utf-8")
+    _paths.seed_examples()
+    assert (seeded / "demo_metaverse.json").read_text(encoding="utf-8") == '{"edited": true}', \
+        "seeding must never overwrite a map the user has edited"
+
+
 def test_describe_reports_the_layout_and_flags_an_unwritable_install():
     lines = _paths.describe()
     text = "\n".join(lines)
