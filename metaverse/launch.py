@@ -114,8 +114,8 @@ def main():
     except ImportError as e:
         missing = str(e).split("'")[1] if "'" in str(e) else str(e)
         print(f"[ghostworld] 缺少依赖: {missing}")
-        print(f"[ghostworld] 请运行: pip install git+https://github.com/Offblink/GhostWorld.git")
-        print(f"[ghostworld] 如已安装仍报错，检查 Python 版本是否在 3.10–3.13 之间。")
+        print("[ghostworld] 请运行: pip install git+https://github.com/Offblink/GhostWorld.git")
+        print("[ghostworld] 如已安装仍报错，检查 Python 版本是否在 3.10–3.13 之间。")
         _sys.exit(1)
 
 def _run():
