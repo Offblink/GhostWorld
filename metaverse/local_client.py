@@ -4,20 +4,92 @@ import asyncio, math, os, time, numpy as np, pygame
 from ghostengine import Frame, PlayerView, EntityView, ColorConfig, WallDef, FogConfig, render, TextureLoader, load_raw, build_colors, draw_minimap
 from ._shared import chinese_font
 
+# Chat HUD: one wrapped block for both client branches. Rows are measured with
+# the real font because CJK glyphs are wider than ASCII ones, and the block is
+# bottom-anchored so a burst of speech grows upward instead of off-screen.
+CHAT_WINDOW_S = 10.0        # a line stays on screen this long after it was said
+CHAT_MAX_MESSAGES = 10      # newest messages considered
+CHAT_MAX_ROWS = 14          # wrapped rows kept on screen
+CHAT_LINE_H = 18
+
+
+def wrap_chat_line(text: str, font, max_width: int) -> list[str]:
+    """Break one chat line so every row fits inside ``max_width``.
+
+    Chinese has no spaces to break on, so this wraps per character; an ASCII
+    word is kept whole when the break can wait for its space. A message too long
+    for the window used to be drawn as one row and simply ran off the right edge.
+    """
+    rows: list[str] = []
+    row = ""
+    for ch in text:
+        if ch == "\n":
+            rows.append(row)
+            row = ""
+            continue
+        if row and font.size(row + ch)[0] > max_width:
+            cut = row.rfind(" ")
+            if cut > 0 and ch != " ":
+                rows.append(row[:cut])
+                row = f"{row[cut + 1:]}{ch}"
+            else:
+                rows.append(row)
+                row = ch
+        else:
+            row += ch
+    rows.append(row)
+    return rows
+
 
 class LocalClient:
     def __init__(self, ws, ctx, avatar_name, map_path, texture=""):
         self.ws = ws; self.ctx = ctx; self.avatar_name = avatar_name; self.map_path = map_path; self._texture = texture
-        from metaverse.server import handle_message, _build_snapshot
+        from metaverse.server import (
+            PAUSED_REASON, TYPING_REASON, _build_snapshot, handle_message, refuse_agent_queue,
+        )
         self._handle_message = handle_message; self._build_snapshot = _build_snapshot
+        # A client that is not ticking (paused, or the player is typing) has no
+        # frame loop to run a channel command: it answers the queue with why.
+        self._refuse_commands = refuse_agent_queue
+        self._paused_reason = PAUSED_REASON; self._typing_reason = TYPING_REASON
         self.entities = []; self.grid = np.zeros((1,1), dtype=int); self.colors = None; self.loader = None
         self.player_x = 0.0; self.player_y = 0.0; self.player_angle = 0.0; self.player_pitch = 0.0
         self._inventory = []
         self.sens = 2.5; self.fullscreen = False; self.show_minimap = True; self._flashlight = True; self.running = True
         self._agent_x = self._agent_y = self._agent_angle = None
         self._last_chat = []
+        self._chat_cache: dict[tuple[str, int], list[str]] = {}
         self._dialogue_text = ""; self._dialogue_time = 0.0
 
+
+    def _draw_chat(self, screen, font, bottom_margin: int) -> None:
+        """The last few seconds of chat, wrapped and anchored above the bottom.
+
+        `bottom_margin` leaves room for what sits at the bottom of that branch
+        (the input bar while typing, nothing while playing). Wrapping is cached
+        per (text, width): this runs every frame, and measuring glyphs at 120fps
+        for a line that has not changed is pure waste.
+        """
+        if not self._last_chat:
+            return
+        width = max(200, screen.get_width() - 20)
+        now = time.time()
+        recent = [c for c in self._last_chat if now - c.get("time", 0) < CHAT_WINDOW_S]
+        rows: list[str] = []
+        for entry in recent[-CHAT_MAX_MESSAGES:]:
+            text = f"[{entry.get('from', '?')}] {entry.get('message', '')}"
+            key = (text, width)
+            wrapped = self._chat_cache.get(key)
+            if wrapped is None:
+                wrapped = wrap_chat_line(text, font, width)
+                if len(self._chat_cache) > 256:
+                    self._chat_cache.clear()
+                self._chat_cache[key] = wrapped
+            rows.extend(wrapped)
+        y = screen.get_height() - bottom_margin - CHAT_LINE_H * min(len(rows), CHAT_MAX_ROWS)
+        for row in rows[-CHAT_MAX_ROWS:]:
+            screen.blit(font.render(row, True, (255, 255, 200)), (10, y))
+            y += CHAT_LINE_H
 
     def _init_pygame(self):
         # fix_ime() disabled — let pygame.TEXTINPUT handle IME
@@ -157,7 +229,14 @@ class LocalClient:
                 if s:
                     sw, sh = s.get_size(); o = pygame.Surface((sw,sh), pygame.SRCALPHA); o.fill((0,0,0,160)); s.blit(o,(0,0))
                     txt = big_font.render("PAUSED",True,(255,255,255)); s.blit(txt, txt.get_rect(center=(sw//2, sh//2-20)))
-                pygame.display.flip(); continue
+                self._refuse_commands(self.ctx, self._paused_reason)
+                pygame.display.flip()
+                # This branch used to spin here without ever yielding, which took
+                # the whole asyncio loop down with it: no auto-save, no in-process
+                # agent, nothing scheduled — for as long as the pause lasted. The
+                # world stays frozen on purpose; the loop does not.
+                await asyncio.sleep(0)
+                continue
 
             if chatting:
                 # long-press backspace: 500ms initial delay, then 50ms repeat
@@ -181,14 +260,11 @@ class LocalClient:
                         draw_minimap(s, self.grid, self.player_x, self.player_y, self.player_angle, ep, wall_colors=wc, agent_x=self._agent_x, agent_y=self._agent_y, agent_angle=self._agent_angle, agent_flashlight=self._flashlight)
                     snapshot = self._build_snapshot(self.ws); chat = snapshot.get("chat", [])
                     if chat: self._last_chat = chat
-                    now = time.time()
-                    recent = [c for c in self._last_chat if now - c.get("time",0) < 10.0]
-                    for i, c in enumerate(recent[-10:]):
-                        txt = font.render(f"[{c['from']}] {c['message']}", True, (255,255,200))
-                        s.blit(txt, (10, s.get_height() - 150 + i*18))
+                    self._draw_chat(s, font, bottom_margin=36)
                     bar = pygame.Surface((s.get_width(), 30), pygame.SRCALPHA); bar.fill((0,0,0,200))
                     s.blit(bar, (0, s.get_height()-30))
                     txt = font.render(f"> {chat_input}_", True, (255,255,255)); s.blit(txt, (10, s.get_height()-25))
+                self._refuse_commands(self.ctx, self._typing_reason)
                 pygame.display.flip(); await asyncio.sleep(0); continue
 
             tick_counter += 1
@@ -286,11 +362,7 @@ class LocalClient:
                 draw_minimap(s, self.grid, self.player_x, self.player_y, self.player_angle, ep, wall_colors=wc, agent_x=self._agent_x, agent_y=self._agent_y, agent_angle=self._agent_angle, agent_flashlight=self._flashlight)
             snapshot = self._build_snapshot(self.ws); chat = snapshot.get("chat", [])
             if chat: self._last_chat = chat
-            now = time.time()
-            recent = [c for c in self._last_chat if now - c.get("time",0) < 10.0]
-            for i, c in enumerate(recent[-10:]):
-                txt = font.render(f"[{c['from']}] {c['message']}", True, (255,255,200))
-                s.blit(txt, (10, s.get_height() - 120 + i*18))
+            self._draw_chat(s, font, bottom_margin=10)
 
             if chatting:
                 bar = pygame.Surface((s.get_width(), 30), pygame.SRCALPHA); bar.fill((0,0,0,200)); s.blit(bar, (0, s.get_height()-30))
