@@ -59,6 +59,11 @@ ghostworld-wait --timeout 25           # → 阻塞；玩家说话才打印一�
 `wait --all` 把**连上之前就已发布**的 3 条事件一次交出（无丢失），紧接着第二次调用退出 3（**不重放**）；
 `Ctrl+C` 后 `.channel.json` 被删除。
 
+**推荐接法（①，子进程 + `--follow`）也真机跑过**：常驻 `ghostworld-wait --all --follow` 逐行即时输出、
+连上之前发布的事件一次交出、静默时不退出不忙等、Ctrl+C 退 0；游戏被 Ctrl+C 后它打印
+`ghostworld-wait: channel went away` 并以 **2** 退出（监管者据此重启）。
+`tests/test_channel_e2e.py` 里 `iter_events`/follow 的两条用例把「流式 · 静默不退出 · 对方消失即结束」钉住。
+
 ## 还剩什么 / 已知偏差
 
 - **GUI 路径没真机手测**：`python -m metaverse.launch` 要真窗口，本次只验了 headless + 进程内 e2e。

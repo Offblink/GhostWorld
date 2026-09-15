@@ -232,3 +232,82 @@ async def _exercise_legacy(la, tmp_path):
             agent.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await agent
+
+
+def test_follow_streams_batches_and_survives_silence(tmp_path):
+    asyncio.run(_exercise_follow(tmp_path))
+
+
+async def _exercise_follow(tmp_path):
+    """The recommended integration path: one long-lived watcher, zero polling."""
+    async with _Harness(tmp_path) as h:
+        client = h.client()
+        stop = threading.Event()
+        batches: list[list[dict]] = []
+        errors: list[BaseException] = []
+
+        def follower():
+            try:
+                for batch in client.iter_events(timeout=0.3, kinds=None, stop=stop.is_set):
+                    batches.append(batch)
+            except BaseException as e:  # noqa: BLE001 - reported by the assertions below
+                errors.append(e)
+
+        th = threading.Thread(target=follower)
+        th.start()
+        await asyncio.sleep(0.2)
+        h.say("一")
+        for _ in range(20):
+            if batches:
+                break
+            await asyncio.sleep(0.05)
+        assert [e["message"] for e in batches[0]] == ["一"], "the batch must be pushed, not polled"
+
+        # silence must not end the watcher — a timeout just loops
+        await asyncio.sleep(0.6)
+        assert len(batches) == 1, "an idle timeout must not produce an empty batch"
+        assert th.is_alive(), "the watcher must keep waiting after a timeout"
+
+        h.say("二")
+        h.say("三")
+        for _ in range(20):
+            if len(batches) > 1:
+                break
+            await asyncio.sleep(0.05)
+        assert [e["message"] for e in batches[1]] == ["二", "三"], "queued speech arrives as one batch"
+
+        stop.set()
+        await asyncio.to_thread(th.join, 5.0)
+        assert not th.is_alive(), "stop() must end the watcher"
+        assert errors == []
+
+
+def test_follow_ends_when_the_channel_goes_away(tmp_path):
+    asyncio.run(_exercise_follow_exit(tmp_path))
+
+
+async def _exercise_follow_exit(tmp_path):
+    async with _Harness(tmp_path) as h:
+        client = h.client()
+        seen: list[dict] = []
+        finished = threading.Event()
+
+        def follower():
+            for batch in client.iter_events(timeout=0.3, kinds=None):
+                seen.extend(batch)
+            finished.set()
+
+        th = threading.Thread(target=follower)
+        th.start()
+        await asyncio.sleep(0.3)
+        h.say("活着")
+        for _ in range(20):
+            if seen:
+                break
+            await asyncio.sleep(0.05)
+        assert [e["message"] for e in seen] == ["活着"]
+
+        close_channel(h.server, h.channel_path)  # the game exits
+        await asyncio.to_thread(th.join, 5.0)
+        assert finished.is_set(), "the watcher must end (not hang) when the game exits"
+        assert [e["message"] for e in seen] == ["活着"]

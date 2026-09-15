@@ -132,6 +132,16 @@ ghostworld-wait --all --follow                      # 常驻观察者，持续�
 没有安装包时等价地用 `python -m metaverse.cli_channel send|wait ...`。
 harness 只要能「起一个进程并等它的 stdout」，就能接。
 
+真机实测过的监管语义（2026-09-15，headless 游戏 + 已安装的 console script）：
+
+| 场景 | 看到什么 |
+|---|---|
+| 有事件 | 立刻打印一行 JSON，**不按间隔攒批**（三条相隔 1s 的命令 → 行间隔 1.37s） |
+| 连上之前就已发布的事件 | **不丢**：游标归零时缓冲里的事件一次交出 |
+| 长时间没人说话 | 不退出、不忙等（空转超时只是重新开始等） |
+| 你 Ctrl+C 它 | 退出 **0** |
+| **游戏退出** | stderr 打印 `ghostworld-wait: channel went away`，退出 **2** —— 这是给监管者的信号：该重启就重启 |
+
 ### 6.2 进程内直连（把 `metaverse/channel_client.py` 拷进你的项目）
 
 适合：调用方在自己的事件循环里，不能接受每次唤醒都起一个进程。
