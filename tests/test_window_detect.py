@@ -2,7 +2,7 @@
 import sys, os
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.dont_write_bytecode = True
-ROOT = r'C:\tmp\ghostengine'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from PySide6.QtWidgets import QApplication
@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QPoint
 app = QApplication.instance() or QApplication(sys.argv)
 
 # Create a test map with a portal
-import json, tempfile
+import json, tempfile, shutil
 test_map = {
     "version": 3,
     "grid": [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
@@ -25,8 +25,7 @@ test_map = {
                "walls": {"1": {"color": [100,100,150]}}},
     "minimap": {"mode": "always", "duration": 0}
 }
-tmpdir = os.path.join(ROOT, "examples")
-os.makedirs(tmpdir, exist_ok=True)
+tmpdir = tempfile.mkdtemp(prefix="ghostworld_window_")
 map_path = os.path.join(tmpdir, "_test_window.json")
 with open(map_path, "w", encoding="utf-8") as f:
     json.dump(test_map, f)
@@ -46,7 +45,7 @@ for w in QApplication.topLevelWidgets():
 
 # Check PropertyPanel - is it a top-level window?
 props = window._props
-print(f"\n=== PropertyPanel ===")
+print("\n=== PropertyPanel ===")
 print(f"  Type: {type(props).__name__}")
 print(f"  isWindow: {props.isWindow()}")
 print(f"  parent: {type(props.parent()).__name__ if props.parent() else 'None'}")
@@ -107,5 +106,5 @@ for d, name, title, vis in find_windows(props):
     print(f"  {'  ' * d}{name}: '{title}' visible={vis}")
 
 # Cleanup
-os.unlink(map_path)
+shutil.rmtree(tmpdir, ignore_errors=True)
 print("\nDone.")

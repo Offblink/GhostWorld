@@ -2,12 +2,13 @@
 import sys, os
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.dont_write_bytecode = True
-sys.path.insert(0, r'C:\tmp\ghostengine')
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from PySide6.QtWidgets import QApplication
 app = QApplication.instance() or QApplication(sys.argv)
 
-import json
+import json, tempfile, shutil
 test_map = {
     "version": 3,
     "grid": [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1]],
@@ -20,7 +21,7 @@ test_map = {
                "walls": {"1": {"color": [100,100,150]}}},
     "minimap": {"mode": "always", "duration": 0}
 }
-tmpdir = os.path.join(r'C:\tmp\ghostengine', "examples")
+tmpdir = tempfile.mkdtemp(prefix="ghostworld_window2_")
 map_path = os.path.join(tmpdir, "_test_window2.json")
 with open(map_path, "w", encoding="utf-8") as f:
     json.dump(test_map, f)
@@ -30,7 +31,7 @@ window = EditorWindow(project_dir=tmpdir)
 window._load_map(map_path)
 
 # Identify top-level QGroupBox widgets
-from PySide6.QtWidgets import QGroupBox, QFrame, QMenu
+from PySide6.QtWidgets import QGroupBox, QFrame
 
 print("=== Top-level QGroupBox widgets ===")
 for w in QApplication.topLevelWidgets():
@@ -55,7 +56,7 @@ for w in QApplication.topLevelWidgets():
         if location:
             print(f"    In tree: {location}")
         else:
-            print(f"    NOT in EditorWindow tree!")
+            print("    NOT in EditorWindow tree!")
 
 # Also identify QFrame top-level
 print("\n=== Top-level QFrame widgets ===")
@@ -63,5 +64,5 @@ for w in QApplication.topLevelWidgets():
     if isinstance(w, QFrame) and not isinstance(w, QGroupBox):
         print(f"  QFrame: objectName='{w.objectName()}' visible={w.isVisible()}")
 
-os.unlink(map_path)
+shutil.rmtree(tmpdir, ignore_errors=True)
 print("\nDone.")

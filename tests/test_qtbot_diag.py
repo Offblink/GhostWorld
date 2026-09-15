@@ -1,11 +1,11 @@
 """Use qtbot to diagnose the gap between portal fields and delete button."""
-import sys, os
+import sys, os, tempfile, shutil
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.dont_write_bytecode = True
-sys.path.insert(0, r'C:\tmp\ghostengine')
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from PySide6.QtWidgets import QApplication, QWidget, QGroupBox
-from PySide6.QtCore import QRect
 
 app = QApplication.instance() or QApplication(sys.argv)
 
@@ -14,7 +14,10 @@ from editor.props import PropertyPanel
 from PySide6.QtGui import QUndoStack
 
 st = EditorState()
-st.map_path = r'C:\tmp\ghostengine\examples\_dbg.json' if os.path.exists(r'C:\tmp\ghostengine\examples\_dbg.json') else '.'
+tmpdir = tempfile.mkdtemp(prefix="ghostworld_qtbot_diag_")
+_dbg_map = os.path.join(tmpdir, "_dbg.json")
+st.map_path = _dbg_map if os.path.exists(_dbg_map) else '.'
+st.project_dir = tmpdir
 st.entities = [
     {"x": 2.5, "y": 3.5, "kind": "portal", "id": "portal_0", "portal_target": None,
      "size_3d": 150, "width_3d": 0.2, "occlusion": "center"},
@@ -39,8 +42,6 @@ def dump_tree(widget: QWidget, depth=0):
         visible = widget.isVisible()
         indent = "  " * depth
         name = type(widget).__name__
-        title = widget.windowTitle() if hasattr(widget, 'windowTitle') else ''
-        objname = widget.objectName()
         extra = ''
         if isinstance(widget, QGroupBox):
             extra = f" title='{widget.title()}'"
@@ -83,3 +84,6 @@ for child in panel.findChildren(QWidget):
     geo = child.geometry()
     if geo.y() >= stack_bottom and geo.y() + geo.height() <= del_top and geo.width() > 0:
         print(f"  {type(child).__name__}: ({geo.x()},{geo.y()}) {geo.width()}x{geo.height()} visible={child.isVisible()}")
+
+# Cleanup
+shutil.rmtree(tmpdir, ignore_errors=True)
