@@ -30,29 +30,54 @@
 
 ## 二、待办
 
-1. **给编辑器设计图标**（用户点名要做的下一件事）
-   - 主题：**幽灵 👻** —— 把 emoji 渲染成 PNG（本机 PySide6 能渲彩色 emoji，PyQt5 不行；
-     技能 `app-icon-to-avatar-png` 记了公式与验证法）。
-   - 落点与验收（本机实测口径见技能 `qtgui-verify-this-box`）：
-     - `QApplication.setWindowIcon(QIcon(...))` → 窗口 / Alt-Tab；
-     - Windows **任务栏**分组要 `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Vendor.App")`，
-       且必须在创建任何窗口之前调用，否则任务栏按 `python.exe` 归类、用 python 的图标；
-     - 三个编辑器入口都要覆盖：`editor.pyw`、`ghostworld-editor`（= `editor:main`）、`python -m editor`；
-     - `.ico` 单档 64×64 就够，要高分屏更锐就塞 16/32/48/256。
-   - 仓库目前**没有 assets/ 目录**，要新建；加完文件跑一次门禁。
-2. **分清"跑的是哪一份"**（实测于 2026-09-15 22:50）
-   - `site-packages/metaverse/` 里是一份**真副本**（不是 editable 壳）。`ghostworld` / `ghostworld-editor`
-     这些 console script，以及在**检出目录之外**跑的 `python -m ...`，用的都是它；在检出根目录跑才用检出。
-   - 该副本当前是 **0.3.1 但只到 `e6ffd45`**：包含 `startup_lines()`，却也还有已删除的 `brief()` 和
-     "不可写"劝告，即**不含** `a646d5e` 那次"只报路径"的简化。用户此前看到的重复横幅就出自它的旧形态。
-   - 改了代码后要重装（`pip install -e .` 最省事，之后跑的就是检出）否则看到的是副本的行为。
-   - 运行期文件（`.channel.json`、`.instance.lock`、两个 jsonl）也写在**副本目录里**（22:49 有实例在跑），
-     所以重装前先确认没有游戏实例，免得把正在写入的目录换掉。
-3. **`world.load_state` 会污染新地图**（真 bug，未修）：grid 形状不匹配时它会 `ignoring` 掉旧网格，
-   但**照旧恢复实体**——我重建 #1 时被塞进来过旧 20×20 的坐标，物品卡在墙里。修法一行：形状不匹配
-   时跳过实体/物品恢复。现场：`metaverse/world.py:213 load_state` 附近。
-4. 发版习惯：`version` 只在 `pyproject.toml` 一处；`_update_check` 读的是
-   `raw.githubusercontent.com/.../master/pyproject.toml`，**不依赖 GitHub release**，所以打 tag 就够。
+### 1. 给编辑器设计图标（用户点名的下一件事）
+- 主题：**幽灵 👻** —— 把 emoji 渲染成 PNG（本机 PySide6 能渲彩色 emoji，PyQt5 不行；技能
+  `app-icon-to-avatar-png` 记了公式与验证法）。
+- 落点与验收（实测口径见技能 `qtgui-verify-this-box`）：
+  - `QApplication.setWindowIcon(QIcon(...))` → 窗口 / Alt-Tab；
+  - Windows **任务栏**分组要 `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Vendor.App")`，
+    且必须在创建任何窗口之前调用，否则任务栏按 `python.exe` 归类、显示 python 的图标；
+  - 三个编辑器入口都要覆盖：`editor.pyw`、`ghostworld-editor`（= `editor:main`）、`python -m editor`；
+  - `.ico` 单档 64×64 就够，要高分屏更锐就塞 16/32/48/256。
+- 仓库**没有 assets/ 目录**，要新建；加完文件跑门禁。
+
+### 2. 发版 = 先出 exe，再打 tag（用户 2026-09-15 明确要求："我需要 exe 的 tag"）
+- **口径**：tag 名 = 版本号，**tag 必须对应一个可下载的 exe**；只打源码 tag 不算发版。
+  已存在的 `v0.3.1`（2026-09-15）就是"没带 exe"的那种，按新口径**不算发版**，别拿它当模板。
+- 仓库现状：**没有任何打包脚手架**（无 `.github/`、无 `*.spec`、无 `tools/`、无 `dist/`、无图标资源），从零建。
+- 必须覆盖的入口（`pyproject [project.scripts]` + `launcher.pyw`）：
+
+  | 入口 | 用途 | 关键约束 |
+  |---|---|---|
+  | `ghostworld` = `metaverse.launch:main` | 游戏 | 窗口版（`--noconsole`）|
+  | `ghostworld-editor` = `editor:main` | 编辑器 | 窗口版 + 图标 |
+  | `launcher.pyw` | GUI 启动器（用户平时双击的）| 窗口版 |
+  | `ghostworld-send` / `ghostworld-wait` | 通道 CLI，**Fungi 靠它驱动角色** | **必须保留控制台**，绝不能 `--noconsole` |
+
+  → 一个 `--noconsole` 的单体 exe 会自废武功：Fungi 那条线用子进程调这两个 CLI。要么出两个二进制
+  （窗口版 + 控制台版），要么单 exe 带子命令 + 一个控制台启动器。
+- **冻结后的路径语义要改**（现在 `metaverse/_paths.py` 假设"代码旁边可写"）：PyInstaller 下
+  `PACKAGE_DIR` 是解包出来的临时目录、`ROOT_DIR` 没有 pyproject（`version_string()` 会回落到元数据），
+  而**运行时写入必须搬到用户目录**（如 `%LOCALAPPDATA%\GhostWorld\`）——否则装在 Program Files
+  这种只读位置直接崩。`.channel.json` 要落在两个进程都能找到的地方，Fungi 侧的发现逻辑跟着改。
+- `_update_check` 现在给的更新命令是 `pip install --upgrade git+...`（`metaverse/_update_check.py:59`），
+  exe 分发下要改成"下载新 exe"。它读的远端版本是 raw 上的 `pyproject.toml`，不依赖 GitHub release。
+- 建议顺序：图标（待办 1）→ 打包脚本/CI → 出 exe 实测（含"Fungi 侧 CLI 仍然可用"）→ 打 tag + 把 exe
+  挂到 release 资产。
+
+### 3. 分清"跑的是哪一份"（实测于 2026-09-15 22:50）
+- `site-packages/metaverse/` 里是一份**真副本**（不是 editable 壳）。`ghostworld` / `ghostworld-editor`
+  这些 console script，以及在**检出目录之外**跑的 `python -m ...`，用的都是它；在检出根目录跑才用检出。
+- 该副本当前是 **0.3.1 但只到 `e6ffd45`**：包含 `startup_lines()`，却也还有已删除的 `brief()` 和
+  "不可写"劝告，即**不含** `a646d5e` 那次"只报路径"的简化。用户此前看到的重复横幅就出自它的旧形态。
+- 改了代码后要重装（`pip install -e .` 最省事，之后跑的就是检出）否则看到的是副本的行为。
+- 运行期文件（`.channel.json`、`.instance.lock`、两个 jsonl）也写在**副本目录里**（22:49 有实例在跑），
+  所以重装前先确认没有游戏实例，免得把正在写入的目录换掉。
+
+### 4. `world.load_state` 会污染新地图（真 bug，未修）
+grid 形状不匹配时它会 `ignoring` 掉旧网格，但**照旧恢复实体**——我重建 #1 时被塞进来过旧 20×20 的坐标，
+物品卡在墙里，可达性测试报出来才知道。修法一行：形状不匹配时跳过实体/物品恢复。
+现场：`metaverse/world.py:213 load_state` 附近。
 
 ## 三、坑（都实测过，别重踩）
 
