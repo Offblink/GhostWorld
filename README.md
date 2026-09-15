@@ -120,6 +120,8 @@ pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWo
 python -m metaverse.launch                        # 默认地图
 python -m metaverse.launch my_map.json             # 指定地图
 python launcher.py                                 # GUI 启动器（需 PySide6）
+python headless_player.py                          # 无头联调：服务 + 一个会说活的玩家
+python headless_player.py my_map.json --say 你好 --after 3
 ```
 
 
@@ -312,6 +314,7 @@ python editor.py [项目目录]
 | `channel_client.py` | **通道客户端**：纯 stdlib、可整文件拷走给别的项目用 |
 | `cli_channel.py` | 两个 CLI 入口（`ghostworld-send` / `ghostworld-wait`）与退出码 |
 | `local_agent.py` | **Agent**。同进程运行：读 `agent_commands.jsonl`（兼容层）投队列；事件走 EventBus，由 FileSink 落 `agent_output.jsonl` |
+| `headless_player.py` | **联调夹具**：无头起服务，并连一个人类玩家（可用 `--say` 让它说一句话）——给外部 Agent 试通道用 |
 | `launch_config.json` | 启动配置：玩家名、agent 名、贴图路径 |
 
 ### 命令
