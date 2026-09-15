@@ -1,6 +1,6 @@
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        GhostWorld Metaverse v2                           │
-│                    同进程架构 · 无网络 · 共享 WorldState                    │
+│       同进程世界 · 共享 WorldState · Agent 走 127.0.0.1 回环通道     │
 └─────────────────────────────────────────────────────────────────────────┘
 
                               ┌──────────────┐
@@ -35,21 +35,21 @@
    ┌──────────────────────────────────────────────────────────────────────┐
    │                         metaverse 核心                                │
    │                                                                      │
-   │  ┌─────────────┐    ┌─────────────┐                                 │
-   │  │local_client │    │local_agent  │                                 │
-   │  │  (pygame)   │    │  (omp)      │                                 │
-   │  │             │    │             │                                 │
-   │  │ WASD 移动    │    │ 0.3s 轮询    │                                 │
-   │  │ 鼠标视角     │    │ 读/写 .jsonl │                                 │
-   │  │ Enter 聊天   │    │             │                                 │
-   │  │ M 小地图     │    │ say move     │                                 │
-   │  │ Space 暂停   │    │ goto pickup  │                                 │
-   │  │             │    │ place give   │                                 │
-   │  │_build_frame()│    │ set_entity   │                                 │
-   │  │_apply_snap() │    │ edit_map     │                                 │
-   │  │Item 深拷贝    │    │ turn track   │                                 │
-   │  │跨图地图切换   │    │ snapshot     │                                 │
-   │  └──────┬──────┘    └──────┬──────┘                                 │
+   │  ┌──────────────┐    ┌──────────────┐  ┌───────────────────────────┐ │
+   │  │ local_client │    │ local_agent  │  │ channel.py                │ │
+   │  │   (pygame)   │    │   (omp)      │  │  事件总线：单调 seq       │ │
+   │  │              │    │              │  │  有界缓冲 · Condition     │ │
+   │  │ WASD 移动    │    │ 事件总线订阅 │  │ channel_server.py         │ │
+   │  │ 鼠标视角     │    │ 命令投队列   │  │  127.0.0.1 行 JSON        │ │
+   │  │ Enter 聊天   │    │              │  │ channel_client.py         │ │
+   │  │ M 小地图     │    │ say move     │  │  (纯 stdlib · 可拷走)     │ │
+   │  │ Space 暂停   │    │ goto pickup  │  │ cli_channel.py            │ │
+   │  │              │    │ place give   │  │  ghostworld-send → ack    │ │
+   │  │_build_frame()│    │ set_entity   │  │  ghostworld-wait → 阻塞   │ │
+   │  │_apply_snap() │    │ edit_map     │  │  = 外部 Agent 的接口      │ │
+   │  │Item 深拷贝   │    │ turn track   │  │ 线程只碰 cmd_queue        │ │
+   │  │跨图地图切换  │    │ snapshot     │  │  与 EventBus              │ │
+   │  └──────┬───────┘    └──────┬───────┘  └──────┬────────────────────┘ │
    │         │                  │                                         │
    │         │  handle_message()│                                         │
    │         │  _tick_loop_sync()                                         │
@@ -111,8 +111,12 @@
   数据流
 ═══════════════════════════════════════════════════════════════════════════════
 
-  agent_commands.jsonl ──→ local_agent ──→ handle_message ──→ WorldState
+  外部 Agent ──→ ghostworld-send ──→ channel_server ──→ cmd_queue
+  帧循环(每 tick) ──→ drain_agent_queue() ──→ process_agent_command ──→ handle_message ──→ WorldState
+  执行结果 ──→ PendingCommand ──→ 连接线程 ──→ ack（一次工具调用里拿到）
   player WASD/chat ──→ local_client ──→ handle_message ──→ WorldState
+  player 发言 ──→ handle_message(say) ──→ EventBus.publish(heard, kind=wake) ──→ ghostworld-wait
+  任意事件 ──→ EventBus ──→ FileSink ──→ agent_output.jsonl（兼容层，每行带 seq）
   _tick_world (每 6 帧) ──→ 拾取/传送门/goto ──→ WorldState
   _build_snapshot() ──→ snapshot dict ──→ _apply_snapshot() ──→ entities[]
   entities[] + grid + colors ──→ render() ──→ pygame Surface
@@ -127,9 +131,20 @@
   命令通道
 ═══════════════════════════════════════════════════════════════════════════════
 
-  终端/AI ──→ agent_commands.jsonl ──→ omp agent (0.3s)
-  omp agent ──→ agent_output.jsonl  ──→ 终端/AI (grep heard/see)
-  玩家聊天 ──→ chat_log ──→ agent_output.jsonl (heard 事件)
+  外部 Agent ──→ ghostworld-send '{"cmd":...}' ──→ channel_server ──→ cmd_queue
+                                   帧循环 drain ──→ handle_message ──→ ack 原路返回
+  外部 Agent ──→ ghostworld-wait（阻塞在 127.0.0.1 socket 上；零轮询）
+  玩家发言     ──→ EventBus.publish(kind=wake) ──→ 立刻推给正在等的那条连接
+  其余事件     ──→ kind=observation（可订阅，不唤醒）
+
+  发现文件: metaverse/.channel.json（port/token/pid；进程退出即删）
+  游标文件: metaverse/.wait_cursor.json（按事件 seq；换了游戏进程 token 变了就归零）
+  协议规范: docs/PROTOCOL-agent-channel.md
+  退出码:   send 0/1/2 · wait 0/2/3
+
+  旧文件通道（兼容层，仍在）:
+    终端/AI ──→ agent_commands.jsonl ──→ agent 每 0.3s 读一次（先 move 再读）──→ cmd_queue
+    EventBus ──→ agent_output.jsonl ──→ 终端/AI（listen.py 按 seq 跟读）
 
 ═══════════════════════════════════════════════════════════════════════════════
   v2 关键变更 (2026-07-06)
@@ -145,3 +160,14 @@
   [客户端] 跨图 Item 深拷贝 · 防坐标污染
   [入口]   launcher/runner 默认读取 .last_map
   [测试]   95→112 · 新增验证/配对/隔离测试
+
+═══════════════════════════════════════════════════════════════════════════════
+  v2.1 关键变更 (2026-09-15)
+═══════════════════════════════════════════════════════════════════════════════
+
+  [通道] Agent 通道重写：EventBus（单调 seq · 有界缓冲 · Condition）+ 127.0.0.1 行 JSON socket
+  [通道] ghostworld-send / ghostworld-wait 两个入口；玩家发言即唤醒，不发言零开销
+  [通道] 命令带 ack（一次调用拿到结果）；通道线程绝不碰 WorldState（只投 cmd_queue / 读 EventBus）
+  [兼容] 旧 jsonl 通道降级为兼容层：命令先 move 再读（不再读后即删），日志每行带 seq
+  [工具] listen.py 改用 seq 游标（退役行号）：日志被轮转或重启都不丢、不重放
+  [工程] 引入 ruff 门禁（只选缺陷类规则）；测试 112 → 137

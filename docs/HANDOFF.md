@@ -66,8 +66,8 @@ ghostworld-wait --timeout 25           # → 阻塞；玩家说话才打印一�
 - **一条通道 = 一个角色**：`hello` 里加 `as` 字段（一条通道驱动多个角色）刻意没实现，是留的加法点；
   现在是驱动游戏里那个 agent 角色（默认名 `omp`）。
 - **Option B（HTTP 门面）**没做：同一个 `EventBus` 上再挂 `ThreadingHTTPServer` 即可，对现有代码零侵入。
-- `docs/ARCHITECTURE.txt` 仍是旧的"文件通道"叙述（历史文档，未改）。
-- `README` 的「已知限制」里那条 emoji 限制仍在。
+- `README` 的「已知限制」里那条 emoji 限制仍在（pygame 字体不支持 emoji）。
+- `docs/ARCHITECTURE.txt` 已同步这次改动（Agent 列、通道 box、数据流、命令通道、v2.1 变更）。
 
 ## 环境备忘
 
