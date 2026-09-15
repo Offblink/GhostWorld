@@ -9,17 +9,19 @@ import contextlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 import threading
 import time
 
 import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 from metaverse.channel_client import ChannelClient, ChannelTimeout
 from metaverse.channel_server import close_channel, open_channel
-from metaverse.server import _tick_loop_sync, handle_message, init_server
+from metaverse.server import PAUSED_REASON, _tick_loop_sync, handle_message, init_server, refuse_agent_queue
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 MAP_A = os.path.join(FIXTURES, "_test_A.json")
@@ -48,11 +50,15 @@ class _Harness:
         return self
 
     async def __aexit__(self, *exc):
+        await self.freeze()
+        close_channel(self.server, self.channel_path)
+
+    async def freeze(self):
+        """Stop the frame loop — what the client's paused/typing branch does."""
         self._stop.set()
         self._ticker.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await self._ticker
-        close_channel(self.server, self.channel_path)
 
     async def _tick(self):
         while not self._stop.is_set():
@@ -311,3 +317,104 @@ async def _exercise_follow_exit(tmp_path):
         await asyncio.to_thread(th.join, 5.0)
         assert finished.is_set(), "the watcher must end (not hang) when the game exits"
         assert [e["message"] for e in seen] == ["活着"]
+
+
+async def _exercise_refusal(tmp_path):
+    """A client that is not ticking answers the queue instead of going silent.
+
+    That silence is what an agent reads as a hang: it waits out its own deadline
+    and gives up (2026-09-15 real-machine report — the player said hello with the
+    game paused, and the character never answered).
+    """
+    reason = PAUSED_REASON
+    async with _Harness(tmp_path) as h:
+        await h.freeze()
+        client = h.client()
+        answer: dict = {}
+
+        def send():
+            answer["ack"] = _swallow(lambda: client.send({"cmd": "say", "message": "在吗"}))
+
+        th = threading.Thread(target=send)
+        th.start()
+        for _ in range(50):
+            if not h.ctx.cmd_queue.empty():
+                break
+            await asyncio.sleep(0.02)
+        assert not h.ctx.cmd_queue.empty(), "the frozen client must have the command queued"
+
+        started = time.monotonic()
+        assert refuse_agent_queue(h.ctx, reason) == 1, "the frozen loop answers what it queued"
+        await asyncio.to_thread(th.join, 5.0)
+        assert not th.is_alive(), "the agent must not be left waiting for a frame loop"
+        ack = answer["ack"]
+        assert isinstance(ack, dict), f"nothing answered the frozen client: {ack!r}"
+        assert ack == {"type": "error", "reason": reason}, ack
+        assert time.monotonic() - started < 0.05, "the answer must be immediate, not a timeout"
+        assert h.ctx.cmd_queue.empty()
+        events, _, _ = h.ctx.bus.wait(after=0, timeout=0.5)
+        assert [e["event"] for e in events] == ["cmd_refused"], "observers must see why, too"
+
+
+def test_a_frozen_client_answers_commands_with_the_reason(tmp_path):
+    asyncio.run(_exercise_refusal(tmp_path))
+
+
+# The follower Fungi spawns: the shipped `_emit` over a real channel, its own
+# cursor (a second watcher must not eat the tests' events).
+_FOLLOWER = """
+import sys
+from metaverse import channel_client as cc, cli_channel
+client = cc.ChannelClient.from_file(sys.argv[1], cursor_file=sys.argv[2])
+for batch in client.iter_events(timeout=5, kinds={"wake"}):
+    cli_channel._emit(batch, client)
+"""
+
+
+def _read_line(proc, timeout):
+    got: dict = {}
+
+    def read():
+        got["line"] = proc.stdout.readline()
+
+    th = threading.Thread(target=read, daemon=True)
+    th.start()
+    th.join(timeout)
+    return got.get("line")
+
+
+async def _exercise_streaming(tmp_path):
+    """A watcher reads the follower over a pipe — a line must leave it at once
+    and must still be UTF-8.
+
+    Spawned with stdout=PIPE the child's stdout is block-buffered, so without a
+    flush the player's line sat in an 8 KB buffer until the game exited: every
+    wake was swallowed and the agent never answered. With the flush but without
+    pinned stdio the child encoded the line with the console code page instead
+    (cp936 here), so the player's 在吗 arrived as U+FFFD mojibake — both
+    real-machine reports, 2026-09-15.
+
+    PYTHONUNBUFFERED/PYTHONUTF8/PYTHONIOENCODING are stripped because that is the
+    environment a GUI-launched Fungi has; the harness's own shell exports them,
+    which is exactly what hid both bugs from the earlier verification.
+    """
+    async with _Harness(tmp_path) as h:
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("PYTHONUNBUFFERED", "PYTHONUTF8", "PYTHONIOENCODING")}
+        child = subprocess.Popen(
+            [sys.executable, "-c", _FOLLOWER, h.channel_path, h.cursor_path],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, encoding="utf-8", errors="replace", env=env,
+        )
+        try:
+            await asyncio.sleep(0.5)          # the child has its wait request in
+            h.say("在吗")
+            line = await asyncio.to_thread(_read_line, child, 5.0)
+            assert line is not None, "the event line never left the follower's buffer"
+            assert json.loads(line)["message"] == "在吗", "the line must be UTF-8, not the code page"
+        finally:
+            child.kill()
+
+
+def test_follower_lines_reach_a_pipe_immediately(tmp_path):
+    asyncio.run(_exercise_streaming(tmp_path))

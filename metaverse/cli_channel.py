@@ -16,6 +16,7 @@ Exit codes (part of the contract, see docs/PROTOCOL-agent-channel.md):
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 
@@ -41,7 +42,25 @@ _USAGE = {
 }
 
 
+def utf8_stdio() -> None:
+    """Pin this CLI's own pipes to UTF-8 — what every consumer assumes.
+
+    The line JSON is UTF-8 on the socket, and a watcher decodes this process's
+    stdout as UTF-8 as well (`subprocess(..., text=True, encoding="utf-8")`).
+    Launched by a GUI — no PYTHONUTF8/PYTHONIOENCODING — the child would instead
+    use the console code page (cp936 on this box), so the player's 你好 reached
+    the agent as U+FFFD mojibake and the agent's own reply came back mangled
+    (2026-09-15 real-machine report).
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        if (getattr(stream, "encoding", "") or "").lower().replace("-", "") == "utf8":
+            continue  # already there (a harness that exports PYTHONUTF8) — no work
+        with contextlib.suppress(Exception):  # in-process use, or a replaced stream
+            stream.reconfigure(encoding="utf-8")
+
+
 def send_main(argv: list[str] | None = None) -> int:
+    utf8_stdio()
     args = list(sys.argv[1:] if argv is None else argv)
     payload = None
     for a in args:
@@ -85,14 +104,20 @@ def send_main(argv: list[str] | None = None) -> int:
 
 
 def _emit(events: list[dict], client: ChannelClient) -> None:
+    utf8_stdio()  # the printer owns its encoding, next to owning its flush
     if client.last_gap:
         print(f"[channel] events were lost (buffer holds seq >= {client.last_gap.get('oldest')})",
               file=sys.stderr)
     for evt in events:
-        print(json.dumps(evt, ensure_ascii=False))
+        # A watcher reads this over a pipe (`--follow`, spawned by a harness),
+        # where stdout is block-buffered: without the flush the player's line
+        # sits in the child's 8 KB buffer until the game exits, and the agent is
+        # never woken (2026-09-15 real-machine report).
+        print(json.dumps(evt, ensure_ascii=False), flush=True)
 
 
 def wait_main(argv: list[str] | None = None) -> int:
+    utf8_stdio()
     args = list(sys.argv[1:] if argv is None else argv)
     timeout = DEFAULT_WAIT_TIMEOUT
     after = None

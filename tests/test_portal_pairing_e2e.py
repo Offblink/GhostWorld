@@ -5,17 +5,28 @@ sys.dont_write_bytecode = True
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path: sys.path.insert(0, ROOT)
 
-CMD_FILE = os.path.join(ROOT, "metaverse", "agent_commands.jsonl")
-LOG_FILE = os.path.join(ROOT, "metaverse", "agent_output.jsonl")
+
+def _la():
+    """The legacy file channel lives in module globals — read them, don't copy them.
+
+    They used to point at the repo's own `metaverse/agent_*.jsonl`, which is
+    shared with any *running* game: its local agent polls the same command file
+    every 0.3s and ate this test's goto (2026-09-15, the test failed only while
+    a game was up). The fixture below redirects both to a temp dir.
+    """
+    import metaverse.local_agent as la
+    return la
+
 
 def write_cmd(cmd: dict):
-    with open(CMD_FILE, "w", encoding="utf-8") as f:
+    with open(_la().CMD_FILE, "w", encoding="utf-8") as f:
         f.write(json.dumps(cmd) + "\n")
 
 def read_log():
-    if not os.path.exists(LOG_FILE):
+    path = _la().LOG_FILE
+    if not os.path.exists(path):
         return []
-    with open(LOG_FILE, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 async def _async_test_portal_pairing():
@@ -70,7 +81,10 @@ async def _async_test_portal_pairing():
     agent_task.cancel()
     print("[TEST] All checks passed!")
 
-def test_portal_pairing():
+def test_portal_pairing(tmp_path, monkeypatch):
+    la = _la()
+    monkeypatch.setattr(la, "CMD_FILE", str(tmp_path / "agent_commands.jsonl"))
+    monkeypatch.setattr(la, "LOG_FILE", str(tmp_path / "agent_output.jsonl"))
     asyncio.run(_async_test_portal_pairing())
 
 if __name__ == "__main__":

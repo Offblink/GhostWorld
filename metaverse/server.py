@@ -60,6 +60,42 @@ def drain_agent_queue(
         pending.deliver(resp)
     return handled
 
+
+# Why a command cannot run right now, in the words the agent and every observer
+# get to read. Owned here so the client branch that raises them and the tests
+# that pin them speak the same strings.
+PAUSED_REASON = "the game is paused by the player — nothing runs until they press SPACE"
+TYPING_REASON = "the player is typing — nothing runs until they send the message"
+
+
+def refuse_agent_queue(
+    ctx: ServerContext,
+    reason: str,
+    max_items: int = DRAIN_MAX_PER_TICK,
+) -> int:
+    """Answer queued channel commands without running them.
+
+    The frame loop is the only place a command reaches the world. A client that
+    is not ticking — the player paused the game, or is typing a message — has no
+    frame loop to run one: leaving the command in the queue makes the agent wait
+    out its own deadline and then read a timeout as a hang. Answering with the
+    reason turns that into one honest line, immediately.
+
+    Queue and bus only, never the world: any branch of the client loop may call
+    it (the boundary drain_agent_queue is held to as well).
+    """
+    handled = 0
+    while handled < max_items:
+        try:
+            pending = ctx.cmd_queue.get_nowait()
+        except queue.Empty:
+            break
+        handled += 1
+        ctx.bus.publish({"kind": KIND_OBSERVATION, "event": "cmd_refused", "reason": reason})
+        pending.deliver({"type": "error", "reason": reason})
+    return handled
+
+
 def handle_message(ws: WorldState, avatar_id: str, msg: dict) -> dict:
     """Process a single message from an avatar. Returns a response dict."""
     msg_type = msg.get("type", "")
@@ -630,6 +666,10 @@ def _tick_world(ctx: ServerContext, ws: WorldState) -> None:
             path.pop(0)
             if not path:
                 av.goto_path = None; av.goto_done = True
+            # Standing on the waypoint (dist can be exactly 0, e.g. a `goto` to
+            # where the avatar already is): this tick has nothing to step, and
+            # dividing by that dist used to take the whole frame loop down with it.
+            continue
         step = min(dist, 0.1)
         nx = av.x + (dx / dist) * step
         ny = av.y + (dy / dist) * step

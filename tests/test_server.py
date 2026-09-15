@@ -1,5 +1,7 @@
 """Tests for metaverse/server.py — message protocol handling."""
 
+import types
+
 import pytest
 
 from metaverse.world import WorldState
@@ -78,3 +80,28 @@ class TestServerProtocol:
         result = handle_message(ws, "alice", {"type": "disconnect"})
         assert result["type"] == "disconnected"
         assert "alice" not in ws.avatars
+
+
+class TestGotoStepping:
+    """The frame loop must survive a goto that has nothing to walk."""
+
+    def test_goto_to_the_cell_the_avatar_already_stands_on(self):
+        """`goto` to where you already are: claim the waypoint, do not divide by zero.
+
+        The step used `dist` even when it was exactly 0, so the tick raised
+        ZeroDivisionError — which kills the frame loop, and with it the game and
+        the channel an agent is driving it through. An agent asking to come to a
+        spot it is already standing on is an ordinary thing to do.
+        """
+        from metaverse.server import _tick_world, handle_message
+        from metaverse.world import WorldState
+
+        ws = WorldState.from_dict(_MAP_DATA)
+        ctx = types.SimpleNamespace()
+        handle_message(ws, "agent", {"type": "connect"})
+        av = ws.avatars["agent"]
+        handle_message(ws, "agent", {"type": "goto", "x": av.x, "y": av.y})
+
+        _tick_world(ctx, ws)          # must not raise
+
+        assert av.goto_path in (None, []), "the waypoint it stands on is claimed"

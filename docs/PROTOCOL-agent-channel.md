@@ -70,10 +70,18 @@
 {"ack": {"type": "said", "from": "omp", "message": "hi", "channel": "global"}, "cursor": 14}
 // 连上了但帧循环没跑（无头/卡住）：
 {"error": "no ack", "cursor": 14}
+// 客户端有意不 tick（玩家按空格暂停 / 正在打字）：命令跑不了，
+// 当场用说明回绝，而不是让你等到超时：
+{"ack": {"type": "error", "reason": "the game is paused by the player — nothing runs until they press SPACE"}, "cursor": 14}
 ```
 
 `ack` 就是游戏 `handle_message` 的返回值（`{"type": ...}`），命令抛异常时是
 `{"event": "cmd_error", "error": "..."}`。命令词表见 README 的「命令」表（与文件通道完全一致）。
+
+**被回绝 ≠ 出错**：玩家暂停、或正在打字时，世界是冻的，没有帧循环能执行这条命令。
+这时你会**立刻**收到 `{"type": "error", "reason": ...}`（`reason` 是客户端状态的原话），
+事件流上同时留一条 `cmd_refused` 观察事件——比 `no ack` 的沉默诚实，人也能看见为什么。
+要再来一次，等玩家恢复（空格）或把话发出去之后再说；那之后的动静照常会唤醒你。
 
 ### 2.3 失败
 
@@ -114,6 +122,10 @@
 | 1 | 连上了但没有 ack | — |
 | 2 | 连不上（游戏没在跑）／用法或 JSON 错误 | 同左 |
 | 3 | — | 超时 |
+
+> **编码**：两个 CLI 的 stdin/stdout/stderr 一律 UTF-8，与 Windows 控制台代码页无关
+> （GUI 启动的调用方没有 `PYTHONUTF8`，所以 CLI 自己钉死）。逐行 JSON 直接按 UTF-8 解码即可，
+> 中文不会变成 `?`／`\ufffd`；反过来，你喂给 `ghostworld-send` 的 JSON 也按 UTF-8 写。
 
 ## 6. 两种接法（都与本仓库**零代码耦合**）
 

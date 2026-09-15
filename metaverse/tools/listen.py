@@ -83,6 +83,9 @@ def poll() -> list[str]:
 
 
 def main():
+    from ..cli_channel import utf8_stdio
+
+    utf8_stdio()  # player lines are Chinese: never encode them with the code page
     if os.path.exists(LEGACY_STATE_FILE):
         try:
             os.remove(LEGACY_STATE_FILE)  # line numbers are meaningless now
@@ -94,11 +97,13 @@ def main():
         if a == "--interval" and i + 1 < len(sys.argv):
             interval = float(sys.argv[i + 1])
 
-    print(f"[listen] tailing agent_output.jsonl by seq (every {interval}s)")
+    print(f"[listen] tailing agent_output.jsonl by seq (every {interval}s)", flush=True)
     while True:
         time.sleep(interval)
         for m in poll():
-            print(f"[player] {m}")
+            # Same pipe rule as the channel CLI: a tailer's consumer reads lines
+            # as they happen, not when an 8 KB buffer happens to fill.
+            print(f"[player] {m}", flush=True)
         if once:
             break
 
