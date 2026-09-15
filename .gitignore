@@ -1,16 +1,26 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
 *.egg-info/
+
+# build outputs
+build/
+dist/
+
+# virtualenvs
+.venv/
+venv/
 
 # runtime artifacts
 .last_map
 metaverse/agent_commands.jsonl
 metaverse/agent_output.jsonl
 metaverse/.instance.lock
+metaverse/launch_config.json
+metaverse/.channel.json
 snapshots/
 examples/states/
-metaverse/launch_config.json
 
 # secrets
 .env

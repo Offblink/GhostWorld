@@ -64,7 +64,15 @@ Raycasting 3D engine + metaverse server + map editor + AI Agent platform.
    └──────────────────────────────────────────────────────────────────────┘
 ```
 
-> 完整架构图见 [ARCHITECTURE.txt](ARCHITECTURE.txt)
+> 完整架构图见 [docs/ARCHITECTURE.txt](docs/ARCHITECTURE.txt)
+
+| 文档 | 内容 |
+|---|---|
+| [docs/HANDOFF.md](docs/HANDOFF.md) | 现状与待办（接手先看这份） |
+| [docs/ARCHITECTURE.txt](docs/ARCHITECTURE.txt) | 完整架构图、数据流、命令通道 |
+| [docs/SPEC.md](docs/SPEC.md) | 需求对照（v2 完成项） |
+| [docs/DESIGN-agent-channel.md](docs/DESIGN-agent-channel.md) | Agent 通道重写设计（已确认，待实施） |
+| [docs/PLAN-agent-channel.md](docs/PLAN-agent-channel.md) | Agent 通道重写实施计划 |
 
 ## 安装
 
