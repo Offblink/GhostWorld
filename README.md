@@ -105,11 +105,52 @@ ghostworld --where          # 等价：python -m metaverse.launch --where
 
 > **中国大陆用户建议**：如 `pip install git+https://` 速度极慢或超时，先设置代理再执行安装命令。
 
+### 打包成 Windows exe（目标机器不用装 Python）
+
+```bash
+python tools/build_exe.py --zip     # -> dist/GhostWorld/ 和 dist/GhostWorld-<版本>-win64.zip
+```
+
+出一个文件夹、两个 exe（共用同一个 `_internal/`）：
+
+| exe | 控制台 | 用途 |
+|---|---|---|
+| `GhostWorld.exe` | 无（窗口版） | 双击 = GUI 启动器；`--editor [目录]` = 地图编辑器；`--play [地图.json]` = 直接进游戏 |
+| `GhostWorldCLI.exe` | 有 | `send '<json>'`、`wait [--timeout N] [--follow]`、`where`、`play` |
+
+必须两个 exe：**通道 CLI 不能是 `--noconsole` 的**——Fungi 靠子进程运行它并读它的 stdout 来驱动角色，
+窗口版进程没有 stdout，那条线会静默失效。
+
+| 事实 | 说明 |
+|---|---|
+| 运行时写哪儿 | 打包版写 `%LOCALAPPDATA%\GhostWorld\`（地图、`states/`、`.channel.json`、两个 jsonl、`snapshots/`）；**源码检出仍写在代码旁边**。exe 所在目录可以只读，装在 Program Files 也没事 |
+| 首次启动 | 把内置的两张 demo 图拷进用户目录，之后**只补不改**（你改过的地图不会被覆盖） |
+| 版本号 | exe 里带着 `pyproject.toml`，所以 `--where` 报的是它打包时的版本，不是残留的 pip 元数据 |
+| 更新 | 打包版不 `pip install` 自己：`_update_check` 会提示去下载新 exe |
+| 接 Fungi | `ghostworld_dir` 指向 exe 所在目录，通道命令换成 `GhostWorldCLI.exe send/wait`；`GhostWorldCLI.exe where` 会把这一行直接打出来 |
+
+图标两枚，**故意不一样**（两个窗口会在任务栏挨着）：
+
+| 文件 | 用在哪 | 长什么样 |
+|---|---|---|
+| `assets/ghostworld.ico` | 启动器 / 游戏 / 两个 exe 的内嵌图标 | 👻 在夜雾色圆角方块上（emoji 字形，Qt6 才有彩色） |
+| `assets/ghostworld-editor.ico` | 编辑器窗口 | **画出来的**：编辑器自己那套墙壁调色板摆成 3×3，中心格空着、套上选中框 `#0af` |
+
+两枚都是 16/24/32/48/64/128/256 **逐档渲染**（不是把大图缩小），小尺寸另有简化画法（编辑器 16/24 px 用 2×2 四块）。
+重新生成：
+
+```bash
+python tools/make_icon.py --app launcher        # assets/ghostworld.ico + .png
+python tools/make_icon.py --app editor          # assets/ghostworld-editor.ico + .png
+```
+
 ## 更新
 
 ```bash
 pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git
 ```
+
+（打包版不适用——它没有 pip；`_update_check` 对 exe 会改成提示下载新版 exe。）
 
 > ⛔ **开发禁令**：**禁止 WebSocket 协议与 asyncio 网络 I/O**；允许 `127.0.0.1` 上的同步 socket + 线程向队列投递。
 > Windows 上 WebSocket 存在未修复的严重 bug，曾导致项目崩溃、数据丢失；MCP 同样禁用。

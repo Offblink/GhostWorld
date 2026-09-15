@@ -21,12 +21,15 @@ def _cache_path() -> str:
 
 
 def _local_version() -> str:
-    """Read installed version via importlib.metadata."""
-    try:
-        from importlib.metadata import version
-        return version("ghostworld")
-    except Exception:
-        return "0.0.0"
+    """This copy's version — the checkout's declaration, or the exe's own.
+
+    Not `importlib.metadata`: installed metadata lags the code, and a frozen
+    build may carry none at all — which used to read as 0.0.0 and announce an
+    update on every single launch.
+    """
+    from ._paths import version_string
+
+    return version_string()
 
 
 def _remote_version() -> str | None:
@@ -50,13 +53,22 @@ def _parse_version(v: str) -> tuple[int, ...]:
         return (0,)
 
 
+def _how_to_update() -> str:
+    """What to tell the user to do — a frozen install cannot `pip install` itself."""
+    from ._paths import is_frozen
+
+    if is_frozen():
+        return "更新方式: 下载新 exe —— https://github.com/Offblink/GhostWorld/releases/latest"
+    return "更新命令: pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git"
+
+
 def _show_notification(local: str, remote: str) -> None:
     """Show a popup (if PySide6 available) AND print to terminal."""
     msg = (
         f"GhostWorld 有新版本可用！\n"
         f"  当前版本: {local}\n"
         f"  最新版本: {remote}\n"
-        f"  更新命令: pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git"
+        f"  {_how_to_update()}"
     )
 
     # Always print to terminal
