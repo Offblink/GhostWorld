@@ -3,7 +3,6 @@
 For the full editor package, see:  editor/
 """
 
-import os
 import sys
 
 try:
@@ -16,13 +15,19 @@ from editor.window import EditorWindow
 
 
 def main():
+    from metaverse._branding import apply_qt_icon, claim_taskbar_identity
+
+    claim_taskbar_identity("editor")   # its own taskbar button, next to the game's
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    apply_qt_icon(app, "editor")
 
     if len(sys.argv) > 1:
         project_dir = sys.argv[1]
     else:
-        project_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples")
+        from metaverse._paths import seed_examples
+
+        project_dir = str(seed_examples())
 
     from pathlib import Path
 

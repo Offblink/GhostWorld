@@ -96,6 +96,8 @@ class LocalClient:
         pygame.init()
         self.screen = pygame.display.set_mode((1068,801), pygame.RESIZABLE)
         pygame.display.set_caption(f"GhostEngine Metaverse — {self.avatar_name}")
+        from metaverse._branding import apply_pygame_icon
+        apply_pygame_icon()          # after set_mode: SDL has a window to wear it
         pygame.event.set_grab(True); pygame.mouse.set_visible(False)
         self.W, self.H = 1068, 801
         self._reload_map_assets()

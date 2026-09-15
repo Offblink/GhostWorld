@@ -7,7 +7,6 @@ Usage::
 Requires PySide6.  Install with:  pip install PySide6
 """
 
-import os
 import sys
 
 try:
@@ -22,17 +21,24 @@ def main():
 
     from .window import EditorWindow
 
+    from metaverse._branding import apply_qt_icon, claim_taskbar_identity
+    from metaverse._paths import utf8_stdio
+
+    utf8_stdio()               # the startup block prints ✓/✗, pipes are not UTF-8 by default
+    claim_taskbar_identity("editor")   # its own taskbar button, next to the game's
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    apply_qt_icon(app, "editor")
 
     from metaverse._update_check import check_update
     check_update()
+
+    from metaverse._paths import seed_examples, startup_lines
     if len(sys.argv) > 1:
         project_dir = sys.argv[1]
     else:
-        project_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
+        project_dir = str(seed_examples())
 
-    from metaverse._paths import startup_lines
     for line in startup_lines({"项目": Path(project_dir)}):
         print(f"[editor] {line}")
     w = EditorWindow(project_dir)
