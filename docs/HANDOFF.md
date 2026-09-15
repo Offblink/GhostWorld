@@ -96,6 +96,9 @@ ghostworld-wait --all --follow       # 常驻观察者（连 observation 一起�
 | `channel not found — 游戏没在跑？` | `.channel.json` 不存在：游戏没起、或已退出 |
 | `no ack`（退出 1） | 通道在，但帧循环没跑（GUI 卡住；无头忘了 ticker） |
 | 玩家打字但 Agent 不动 | ① 开关（config / 设置页）；② `ghostworld_dir` 是否指向游戏仓库；③ 上一节那个游标冲突 |
+| Agent 收到 `the game is paused …` | 玩家按了**空格**：客户端 paused 分支不跑帧循环（世界冻着，这是有意），命令会当场被回绝。让玩家按空格恢复、再说一遍 |
+| 玩家说话但 Agent 毫无反应（控制台也没输出） | 先看 CLI 的事件行有没有 flush：follower 的 stdout 是**管道**（8 KB 块缓冲），`_emit` 不 flush 就把玩家的话闷在子进程里——`psutil`/游标都正常、Fungi 就是收不到。2026-09-15 已修 `metaverse/cli_channel.py`（`list.py` 同理）；改完要**重启游戏**让 follower 换新进程 |
+| 玩家的话到 Agent 那边是乱码（`���`），Agent 回的中文/破折号也烂 | CLI 的 stdout 用了**控制台代码页**（cp936）而不是 UTF-8，调用方按 UTF-8 解码就烂。同一次修复：`cli_channel.utf8_stdio()` 把 stdin/stdout/stderr 钉成 UTF-8（`send`/`wait`/`listen` 都调）；同样要换新进程才生效 |
 | 游戏关掉又开 | 不用管：Fungi 的监视器 30s 内自己重连，且**不丢事件**（游标在游戏侧，按 seq 续） |
 | 想自己写客户端 | 读 `docs/PROTOCOL-agent-channel.md`；或把 `metaverse/channel_client.py` 整文件拷走（纯 stdlib） |
 
