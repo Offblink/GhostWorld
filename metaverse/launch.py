@@ -21,28 +21,92 @@ import os
 
 LOCK_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".instance.lock")
 
-def _acquire_lock() -> bool:
-    """Singleton lock: kill old instance if running, then claim lock file."""
-    import signal
-    if _os.path.exists(LOCK_FILE):
+
+def _process_identity(pid: int) -> tuple[str, float] | None:
+    """(image, creation time) of a live process, or None if it is gone.
+
+    A pid is not an identity: the OS hands the same number out again, and that
+    is how a stale lock file used to end up killing an unrelated program. The
+    creation time is the part that does not come back.
+    """
+    if _sys.platform != "win32":
+        # /proc field 22 = start time in clock ticks since boot (comm may hold spaces).
         try:
-            with open(LOCK_FILE) as f:
-                old_pid = int(f.read().strip())
-            if _sys.platform == "win32":
-                import ctypes
-                kernel32 = ctypes.windll.kernel32
-                handle = kernel32.OpenProcess(0x0400, False, old_pid)
-                if handle:
-                    kernel32.CloseHandle(handle)
-                    import subprocess
-                    subprocess.run(f"taskkill /F /PID {old_pid}", shell=True, capture_output=True)
-            else:
-                try: _os.kill(old_pid, signal.SIGTERM)
-                except: pass
-        except: pass
+            with open(f"/proc/{pid}/stat", "rb") as f:
+                fields = f.read().rsplit(b")", 1)[1].split()
+            return "proc", float(fields[19])
+        except (OSError, IndexError, ValueError):
+            return None
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.windll.kernel32
+    handle = k.OpenProcess(0x1000, False, pid)      # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return None
+    try:
+        buf = ctypes.create_unicode_buffer(32768)
+        size = wintypes.DWORD(len(buf))
+        if not k.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return None
+        times = [wintypes.FILETIME() for _ in range(4)]
+        if not k.GetProcessTimes(handle, *[ctypes.byref(t) for t in times]):
+            return None
+        created = times[0]
+        return buf.value, ((created.dwHighDateTime << 32) | created.dwLowDateTime) / 1e7
+    finally:
+        k.CloseHandle(handle)
+
+
+def _read_lock() -> tuple[int, float | None] | None:
+    """(pid, creation time) — locks written before 2026-09-15 hold only a pid."""
+    try:
+        with open(LOCK_FILE) as f:
+            parts = f.read().split()
+        return int(parts[0]), (float(parts[1]) if len(parts) > 1 else None)
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def _stale_owner(pid: int, created: float | None) -> bool:
+    """Still the instance that wrote the lock? Only a verifiable yes counts.
+
+    A lock with no recorded creation time cannot be verified, so nothing is
+    killed on its word: an unrelated program must never die for a stale file.
+    """
+    if created is None:
+        return False
+    identity = _process_identity(pid)
+    return identity is not None and abs(identity[1] - created) < 0.5
+
+
+def _end_instance(pid: int) -> None:
+    if _sys.platform == "win32":
+        import subprocess
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+    else:
+        import signal
+        try:
+            _os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+
+def _acquire_lock() -> bool:
+    """Singleton lock: end our own old instance, then claim the file.
+
+    The pid is written together with the process's creation time, which is what
+    makes the next launch able to tell "our old instance" from "some other
+    program that happens to hold that pid now".
+    """
+    old = _read_lock()
+    if old is not None and old[0] != _os.getpid() and _stale_owner(*old):
+        _end_instance(old[0])
+    mine = _process_identity(_os.getpid())
     with open(LOCK_FILE, "w") as f:
-        f.write(str(_os.getpid()))
+        f.write(f"{_os.getpid()} {mine[1]:.6f}" if mine else str(_os.getpid()))
     return True
+
+
 def _resolve_map(path: str) -> str:
     if os.path.isabs(path):
         return path
@@ -119,9 +183,15 @@ def main():
         _sys.exit(1)
 
 def _run():
+    args = _sys.argv[1:]
+    if "--where" in args:
+        # Handled before check_update: "where did it install" must not need the network.
+        from metaverse._paths import main as _where
+
+        _where()
+        return
     from metaverse._update_check import check_update
     check_update()
-    args = _sys.argv[1:]
     map_path = DEMO_MAP
     for a in args:
         if a.endswith(".json"):
@@ -132,6 +202,7 @@ def _run():
         print(__doc__)
         print("Options:")
         print("  <map.json>       map file (default: examples/demo_metaverse.json)")
+        print("  --where          print where this copy is installed and what it writes")
         print("  --help, -h       show this help")
         return
 
@@ -150,6 +221,8 @@ def _run():
         print("[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
     print("[launcher] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
+    from metaverse._paths import brief
+    print(f"[launcher] {brief()}")
 
     _acquire_lock()
     asyncio.run(launch_all(mp))
