@@ -49,7 +49,6 @@ def test_describe_reports_the_layout_and_flags_an_unwritable_install():
     try:
         _paths._writable = lambda target: False          # a Program Files install
         assert "不可写" in "\n".join(_paths.describe())
-        assert "不可写" in _paths.brief()
     finally:
         _paths._writable = original
 
@@ -132,6 +131,13 @@ def test_the_editor_window_shows_the_paths_without_asking(tmp_path):
         app.processEvents()
 
 
+def test_the_startup_block_is_only_paths():
+    """Whatever the user installed is where it is — no labels, no advice."""
+    text = "\n".join(_paths.startup_lines({"项目": Path(".")}))
+    assert "pip install" not in text and "源码检出" not in text and "不可写" not in text
+    assert text.count(str(_paths.PACKAGE_DIR)) >= 1
+
+
 def test_the_reported_version_is_the_one_this_checkout_declares():
     """The banner says which copy runs, so it cannot report stale metadata."""
     import re as _re
@@ -140,4 +146,5 @@ def test_the_reported_version_is_the_one_this_checkout_declares():
                           (_paths.ROOT_DIR / "pyproject.toml").read_text(encoding="utf-8"), _re.M).group(1)
     assert _paths.version_string().startswith(declared)
     assert declared in "\n".join(_paths.startup_lines())
+
 

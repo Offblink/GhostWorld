@@ -5,8 +5,8 @@ directory will the game write into" — and that is the one that decides whether
 an install works at all (a site-packages under Program Files is read-only, and
 the channel discovery file has to be created next to the code).
 
-`python -m metaverse.launch --where` prints this; the launcher prints the short
-form on every start. Stdlib only: a diagnostics question must not need pygame,
+`python -m metaverse.launch --where` prints this; every entry point shows
+`startup_lines()` on start. Stdlib only: a diagnostics question must not need pygame,
 a display, or the network.
 """
 from __future__ import annotations
@@ -43,8 +43,6 @@ def version_string() -> str:
         installed = version("ghostworld")
     except PackageNotFoundError:
         return source or "unknown (not installed — a source checkout?)"
-    if source and source != installed:
-        return f"{source}（装的是 {installed}，跑的是源码 —— pip install -e . 可同步）"
     return source or installed
 
 
@@ -97,32 +95,23 @@ def startup_lines(extra: dict[str, Path] | None = None) -> list[str]:
     """The paths every entry point shows on start.
 
     `--where` answers the question in full, but it has to be asked for; this is
-    the part that is worth seeing without asking: which copy is running, and
-    which files it will write. The GUI entry points have no console
-    (`launcher.pyw`, `editor.pyw` are `.pyw`), so they render these lines in
-    the window instead of printing them.
+    the part worth seeing without asking: which directories this copy lives in,
+    and which files it will write. The GUI entry points have no console
+    (`launcher.pyw`, `editor.pyw` are `.pyw`), so they render these lines in the
+    window instead of printing them.
 
     *extra* adds paths an entry point owns rather than the game (the editor's
     project directory).
     """
     extra = extra or {}
     lines = [
-        f"GhostWorld {version_string()}   [{installed_layout()}]",
+        f"GhostWorld {version_string()}",
         f"代码目录   {PACKAGE_DIR}",
         f"安装根     {ROOT_DIR}",
     ]
     for name, path in list(runtime_paths().items()) + list(extra.items()):
         lines.append(f"  {'✓' if _writable(path) else '✗'} {name:<9} {path}")
-    if any(not _writable(p) for p in list(runtime_paths().values()) + list(extra.values())):
-        lines.append("  有路径不可写 —— 换用户级安装（别装进 Program Files）；详见 python -m metaverse._paths")
     return lines
-
-
-def brief() -> str:
-    """One line for the launcher banner: where the code is, and whether it can write."""
-    paths = runtime_paths()
-    ok = all(_writable(path) for path in paths.values())
-    return f"代码 {PACKAGE_DIR} · 运行时写入 {PACKAGE_DIR} ({'可写' if ok else '不可写 —— 见 --where'})"
 
 
 def describe() -> list[str]:
