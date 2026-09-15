@@ -40,10 +40,14 @@
      - 三个编辑器入口都要覆盖：`editor.pyw`、`ghostworld-editor`（= `editor:main`）、`python -m editor`；
      - `.ico` 单档 64×64 就够，要高分屏更锐就塞 16/32/48/256。
    - 仓库目前**没有 assets/ 目录**，要新建；加完文件跑一次门禁。
-2. **让 console script 跑到最新代码**：本机 `site-packages` 里躺着一份**旧副本**（用户就看到过旧横幅
-   "代码 …site-packages\metaverse · 运行时写入 …"）。`pip install -e .` 或重装可同步；
-   元数据不同步只影响 `importlib.metadata.version()`（更新提示会误报"有新版本"）。**没跑之前别信
-   `ghostworld` / `ghostworld-editor` 跑的是检出里的代码。**
+2. **分清"跑的是哪一份"**（实测于 2026-09-15 22:50）
+   - `site-packages/metaverse/` 里是一份**真副本**（不是 editable 壳）。`ghostworld` / `ghostworld-editor`
+     这些 console script，以及在**检出目录之外**跑的 `python -m ...`，用的都是它；在检出根目录跑才用检出。
+   - 该副本当前是 **0.3.1 但只到 `e6ffd45`**：包含 `startup_lines()`，却也还有已删除的 `brief()` 和
+     "不可写"劝告，即**不含** `a646d5e` 那次"只报路径"的简化。用户此前看到的重复横幅就出自它的旧形态。
+   - 改了代码后要重装（`pip install -e .` 最省事，之后跑的就是检出）否则看到的是副本的行为。
+   - 运行期文件（`.channel.json`、`.instance.lock`、两个 jsonl）也写在**副本目录里**（22:49 有实例在跑），
+     所以重装前先确认没有游戏实例，免得把正在写入的目录换掉。
 3. **`world.load_state` 会污染新地图**（真 bug，未修）：grid 形状不匹配时它会 `ignoring` 掉旧网格，
    但**照旧恢复实体**——我重建 #1 时被塞进来过旧 20×20 的坐标，物品卡在墙里。修法一行：形状不匹配
    时跳过实体/物品恢复。现场：`metaverse/world.py:213 load_state` 附近。
