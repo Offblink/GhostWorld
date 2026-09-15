@@ -1,5 +1,5 @@
 """Test editor map validation: wall overlap warnings and out-of-bounds cleanup."""
-import sys, os, json, tempfile
+import sys, os
 import numpy as np
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -67,19 +67,19 @@ class WorldState:
         self.maps: dict[str, dict] = {}
         if map_path:
             import json
-            with open(map_path, "r", encoding="utf-8") as f:
+            with open(map_path, encoding="utf-8") as f:
                 data = json.load(f)
         if data:
             self._load(data)
         self._preload_maps()
 
     @classmethod
-    def from_dict(cls, data: dict) -> "WorldState":
+    def from_dict(cls, data: dict) -> WorldState:
         return cls(data=data)
 
 
     def _preload_maps(self):
-        import os, json as _json
+        import os
         if not self.map_path:
             return
         d = os.path.dirname(os.path.abspath(self.map_path))
@@ -98,7 +98,7 @@ class WorldState:
     def _load_map_file(self, path: str):
         import os, json as _json, numpy as _np
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, encoding="utf-8") as fh:
                 mdata = _json.load(fh)
             name = os.path.basename(path)
             grid = _np.array(mdata.get("grid", [[0]]), dtype=int).T
@@ -125,7 +125,7 @@ class WorldState:
         import json, os
         if not os.path.isfile(path):
             return False
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         self.map_path = path
         self._load(data)
@@ -215,7 +215,7 @@ class WorldState:
         import json, os
         if not os.path.isfile(path):
             return
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         # restore grid — validate shape matches current map
         if "grid" in data:

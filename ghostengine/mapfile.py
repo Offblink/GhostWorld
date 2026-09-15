@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
 
 from .frame import ColorConfig, EntityView, WallDef
 
@@ -18,7 +17,7 @@ from .frame import ColorConfig, EntityView, WallDef
 
 def load_raw(path: str) -> dict:
     """Read a map ``.json`` file, run migrations, return raw dict."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     return _migrate(data)
 

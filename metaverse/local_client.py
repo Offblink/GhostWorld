@@ -1,8 +1,8 @@
 """Local client — same-process, no-network connection to server."""
 from __future__ import annotations
-import asyncio, math, os, sys, time, numpy as np, pygame
+import asyncio, math, os, time, numpy as np, pygame
 from ghostengine import Frame, PlayerView, EntityView, ColorConfig, WallDef, FogConfig, render, TextureLoader, load_raw, build_colors, draw_minimap
-from ._shared import fix_ime, chinese_font, process_agent_command
+from ._shared import chinese_font
 
 
 class LocalClient:
@@ -210,7 +210,6 @@ class LocalClient:
                     self.ws.colors = m["colors"]
                     raw = {"grid": m["grid"].tolist(), "colors": m["colors"]}
                     self.colors = build_colors(raw, self.loader)
-                    old_map = os.path.basename(self.ws.map_path)  # before update
                     target = os.path.basename(av.current_map)
                     self.ws.map_path = target
                     av.current_map = target  # track actual map, not ""

@@ -1,11 +1,11 @@
 """GhostEngine 地图编辑器 — 2-D 网格画布。"""
 
 import math, os, pygame
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QColor, QImage, QPixmap, QPainter, QUndoStack
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QImage, QPixmap, QPainter
 from PySide6.QtWidgets import QWidget
 from . import helpers as helper
-from .model import EditorState, CmdWall, CmdEntity, CmdSpawn
+from .model import CmdWall, CmdEntity, CmdSpawn
 
 class GridCanvas(QWidget):
     CELL_SIZE = 24
@@ -206,7 +206,6 @@ class GridCanvas(QWidget):
         if kind == "avatar":
             return dict(DEFAULT_PRESETS[0]["entity"])
         if kind == "portal":
-            from .model import generate_portal_id
             return {"kind": "portal", "id": "", "portal_target": None, "size_3d": 150, "width_3d": 0.2, "occlusion": "center"}
         return dict(DEFAULT_PRESETS[1]["entity"])
     def _add_entity(self, x, y, kind="item"):

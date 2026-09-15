@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import replace
 
-import numpy as np
 import pygame
 
 from ghostengine import (
-    Frame, PlayerView, EntityView, ColorConfig, WallDef, FogConfig,
+    Frame, PlayerView, EntityView, ColorConfig, FogConfig,
     render, TextureLoader, load_raw, build_colors,
 )
 

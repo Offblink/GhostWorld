@@ -1,7 +1,6 @@
 """GhostEngine 地图编辑器 — 墙壁类型调色板（横栏）以及出生点朝向选择。"""
 import math
 
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 from .model import EditorState
 

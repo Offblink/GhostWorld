@@ -6,7 +6,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
+    QPushButton, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
 )
 from . import helpers as helper
 from .model import EditorState, CmdEntity, CmdWallColor, CmdWallTex, CmdEntityProps, CmdSceneColor
@@ -340,7 +340,7 @@ class PropertyPanel(QWidget):
         p = os.path.join(self.state.project_dir, tmap)
         if not os.path.isfile(p): return
         try:
-            with open(p, "r", encoding="utf-8") as f: data = json.load(f)
+            with open(p, encoding="utf-8") as f: data = json.load(f)
         except Exception: return
         for e in data.get("entities", []):
             if e.get("id") == tid and e.get("kind") == "portal":
@@ -356,7 +356,7 @@ class PropertyPanel(QWidget):
         p = os.path.join(self.state.project_dir, tmap)
         if not os.path.isfile(p): return
         try:
-            with open(p, "r", encoding="utf-8") as f: data = json.load(f)
+            with open(p, encoding="utf-8") as f: data = json.load(f)
         except Exception: return
         for e in data.get("entities", []):
             if e.get("id") != tid or e.get("kind") != "portal": continue
@@ -507,7 +507,7 @@ class PropertyPanel(QWidget):
         st.modified = True
 
     def _browse_facing_tex(self, direction: str):
-        p, _ = QFileDialog.getOpenFileName(self, f"选择朝向贴图", "", "图片 (*.png *.jpg *.gif);;全部 (*)")
+        p, _ = QFileDialog.getOpenFileName(self, "选择朝向贴图", "", "图片 (*.png *.jpg *.gif);;全部 (*)")
         if p:
             w = {"front": self._tex_front, "back": self._tex_back, "left": self._tex_left, "right": self._tex_right}.get(direction)
             if w: w.setText(p)

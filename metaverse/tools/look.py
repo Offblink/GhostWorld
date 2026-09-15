@@ -6,7 +6,7 @@ Usage:
 Prints the latest perception: inventory, all items on map, nearby items.
 Use together with listen.py for full agent awareness.
 """
-import os, json, time
+import os, json
 
 LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'agent_output.jsonl')
 
@@ -14,7 +14,7 @@ LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 def latest_perception():
     if not os.path.exists(LOG_FILE):
         return None
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
+    with open(LOG_FILE, encoding="utf-8") as f:
         lines = f.readlines()
     for line in reversed(lines):
         try:

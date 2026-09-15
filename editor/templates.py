@@ -1,6 +1,5 @@
 """GhostEngine 地图编辑器 — 项目模板预设。"""
 
-import numpy as np
 
 TEMPLATES = {
     "空白": lambda: {

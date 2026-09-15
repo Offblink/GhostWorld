@@ -86,7 +86,6 @@ class TestCastRay:
         """tex_x always in [0, 1)."""
         grid = _make_grid(20, 20)
         grid[10, 5] = 1
-        player = PlayerView(x=5, y=5, angle=0, pitch=0)
 
         # Sample many rays to ensure tex_x range
         for offset in [0.0, 0.1, 0.2, 0.3, 0.4, -0.1, -0.2]:

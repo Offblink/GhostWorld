@@ -204,7 +204,7 @@ def load_map_portals(map_path: str) -> list[dict]:
     if not os.path.isfile(map_path):
         return []
     try:
-        with open(map_path, "r", encoding="utf-8") as f:
+        with open(map_path, encoding="utf-8") as f:
             data = json.load(f)
     except Exception:
         return []
@@ -217,11 +217,11 @@ def load_map_portals(map_path: str) -> list[dict]:
 
 def collect_all_portal_targets(project_dir: str) -> set[tuple[str, str]]:
     """Return set of (portal_id, map_basename) that are targeted by any portal across all maps."""
-    import json, os
+    import json
     targeted: set[tuple[str, str]] = set()
     for map_path in list_project_maps(project_dir):
         try:
-            with open(map_path, "r", encoding="utf-8") as f:
+            with open(map_path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
             continue
@@ -255,12 +255,12 @@ def get_unpaired_portals(target_map_path: str, project_dir: str, exclude_id: str
 def break_all_references_to_portal(project_dir: str, portal_id: str, map_basename: str) -> None:
     """Clear portal_target of any portal (across all maps) that targets *portal_id*.
     Saves modified map files to disk. Also clears in-memory current-map entities if provided."""
-    import json, os
+    import json
     changed: set[str] = set()
     maps_data: dict[str, dict] = {}
     for mp in list_project_maps(project_dir):
         try:
-            with open(mp, "r", encoding="utf-8") as f:
+            with open(mp, encoding="utf-8") as f:
                 maps_data[mp] = json.load(f)
         except Exception:
             continue
@@ -292,7 +292,7 @@ def auto_pair_portals(project_dir: str) -> None:
     maps_data: dict[str, dict] = {}
     for mp in list_project_maps(project_dir):
         try:
-            with open(mp, "r", encoding="utf-8") as f:
+            with open(mp, encoding="utf-8") as f:
                 maps_data[mp] = json.load(f)
         except Exception:
             continue

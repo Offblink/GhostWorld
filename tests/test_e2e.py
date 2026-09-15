@@ -3,10 +3,9 @@ import json
 import os
 import tempfile
 
-import pytest
 
 from metaverse.world import WorldState
-from metaverse.server import handle_message, _build_snapshot, _tick_world, ServerContext
+from metaverse.server import handle_message, _build_snapshot
 
 
 _MAP_DATA = {
@@ -33,7 +32,6 @@ class TestE2E:
 
     def test_two_clients_see_each_other(self):
         ws, map_path = _make_ws()
-        ctx = ServerContext()
         try:
             # Connect human
             r = handle_message(ws, "human", {"type": "connect", "token": "token_human", "owner": "human"})

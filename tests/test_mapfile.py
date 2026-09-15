@@ -1,13 +1,10 @@
 """Tests for mapfile.py — JSON serialisation and migration."""
 
-import json
 import os
 import tempfile
 
-import pytest
 
 from ghostengine.mapfile import _migrate, build_colors, build_entities, load_raw, save_raw
-from ghostengine.frame import EntityView
 
 
 class TestMigrate:

@@ -1,9 +1,8 @@
 """Tests for metaverse/server.py — message protocol handling."""
-import json
 
 import pytest
 
-from metaverse.world import WorldState, Item
+from metaverse.world import WorldState
 
 
 _MAP_DATA = {

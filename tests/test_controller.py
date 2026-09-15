@@ -3,11 +3,12 @@
 Uses numpy grids; no pygame window needed.
 """
 
+from dataclasses import FrozenInstanceError
+
 import numpy as np
 import pytest
 
 from ghostengine.controller import FirstPersonController
-from ghostengine.frame import PlayerView
 
 
 # ── helpers ─────────────────────────────────────────────────────
@@ -133,7 +134,7 @@ class TestPlayerView:
         assert pv.angle == 1.5
         assert pv.pitch == -10
         # Frozen
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             pv.x = 0  # type: ignore[misc]
 
 

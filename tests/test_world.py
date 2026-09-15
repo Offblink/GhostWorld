@@ -3,10 +3,8 @@ import json
 import os
 import tempfile
 
-import numpy as np
-import pytest
 
-from metaverse.world import WorldState, Avatar, Item
+from metaverse.world import WorldState, Item
 
 
 _MAP_TEMPLATE = {

@@ -3,15 +3,14 @@
 import os, sys
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QColor, QFont, QKeySequence, QShortcut, QUndoStack
+from PySide6.QtGui import QAction, QColor, QKeySequence, QUndoStack
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QColorDialog, QComboBox, QDialog, QDialogButtonBox,
-    QDoubleSpinBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
-    QMainWindow, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSpinBox,
-    QSplitter, QStatusBar, QTextBrowser, QToolBar, QVBoxLayout, QWidget,
+    QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QSpinBox,
+    QSplitter, QStatusBar, QTextBrowser, QVBoxLayout, QWidget,
 )
 from ghostengine import load_raw, save_raw
-from .model import EditorState, CmdEntity, auto_pair_portals, generate_portal_id
+from .model import EditorState, auto_pair_portals, generate_portal_id
 from .canvas import GridCanvas
 from .props import PropertyPanel
 from .templates import TEMPLATES

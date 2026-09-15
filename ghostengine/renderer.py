@@ -18,7 +18,7 @@ from .defaults import (
     ENTITY_DEFAULT_OCCLUSION,
 )
 from .entity import project_entity
-from .frame import ColorConfig, EntityView, Frame, PlayerView, WallDef
+from .frame import ColorConfig, EntityView, FogConfig, Frame, PlayerView
 
 
 
@@ -102,7 +102,7 @@ def _draw_sky_floor(
             _FLOOR_CACHE[floor_key] = floor_surf
         dst.blit(floor_surf, (0, horizon))
 
-def _fog_factor(dist: float, fog: "FogConfig") -> float:
+def _fog_factor(dist: float, fog: FogConfig) -> float:
     """0..1 fog opacity at a given distance."""
     if not fog.enabled or dist < fog.start:
         return 0.0
@@ -146,11 +146,9 @@ def _cast_ray(
             # Determine which face was hit by checking the sign of
             # the delta components entering this cell.
             prev_x = px - dir_x * step
-            prev_y = py - dir_y * step
 
             # Did we cross an X-boundary or Y-boundary last step?
             prev_ix = int(prev_x)
-            prev_iy = int(prev_y)
 
             face: int
             tex_x: float
@@ -158,12 +156,10 @@ def _cast_ray(
             if prev_ix != ix:
                 # crossed vertical (X) face
                 face = 0
-                hit_edge = ix if dir_x > 0 else ix + 1
                 tex_x = py - math.floor(py)
             else:
                 # crossed horizontal (Y) face
                 face = 1
-                hit_edge = iy if dir_y > 0 else iy + 1
                 tex_x = px - math.floor(px)
 
             tex_x = tex_x - math.floor(tex_x)  # 0..1
@@ -237,7 +233,6 @@ def _cast_and_draw_walls(
         # wall height
         wall_h = min(sh, int(sh * WALL_HEIGHT_RATIO / (hit.distance + 0.1)))
         wall_top = max(0, int(horizon - wall_h // 2))
-        wall_bottom = min(sh, wall_top + wall_h)
 
         x_start = int(i * line_w)
         x_width = max(2, int(line_w + 1))
@@ -309,7 +304,6 @@ def _draw_textured_wall_column(
 
     scaled = pygame.transform.scale(col_surf, (col_w, col_h))
     if brightness < 0.99:
-        factor = max(0, brightness)
         dark = pygame.Surface((col_w, col_h))
         dark.fill((0, 0, 0))
         dark.set_alpha(int((1.0 - brightness) * 255))
@@ -502,7 +496,6 @@ def _draw_per_column(
     """Draw only the visible columns of *surf* (not blocked by walls)."""
     sw_i, sh_i = surf.get_size()
     left = sx - ent_w / 2
-    right = sx + ent_w / 2
 
     # Sample ~41 points across the entity span
     samples = 41

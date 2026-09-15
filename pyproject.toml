@@ -15,7 +15,30 @@ dependencies = [
 [project.optional-dependencies]
 editor = ["PySide6>=6.5"]
 full = ["PySide6>=6.5", "Pillow"]
-dev = ["pytest", "mypy"]
+dev = ["pytest", "mypy", "ruff>=0.6"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["tests/scratch"]
+
+[tool.ruff.lint]
+# Everything selected here is a defect class a human would call a bug. The
+# project's deliberate house style — one-line `a = 1; b = 2` statements,
+# hand-ordered imports (entry points set sys.path first), `except: pass` in
+# cleanup paths, long data-table lines — is excluded on purpose: this gate is
+# for bugs, not for reformatting the repo.
+select = ["E", "F", "W", "B", "UP", "I"]
+ignore = [
+    "E401",  # `import sys, os` — house style
+    "E402",  # module-level imports after sys.path setup
+    "E501",  # long lines in map/colour tables
+    "E701",
+    "E702",  # one-line statements — house style
+    "E722",  # bare except in defensive/cleanup paths is deliberate
+    "I001",  # imports are ordered by hand
+    "B007",  # unused loop variables read as documentation
+]
 
 [tool.setuptools.packages.find]
 include = ["ghostengine*", "editor*", "metaverse*"]

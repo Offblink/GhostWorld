@@ -1,10 +1,10 @@
 """Regression test: Item objects must not be shared across map entries."""
-import sys, os, json, tempfile
+import sys, os, json
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from metaverse.world import WorldState, Item
+from metaverse.world import WorldState
 
 
 _MAP_A = {
