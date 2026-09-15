@@ -1,130 +1,80 @@
 # HANDOFF — 现状与待办
 
-> 更新：2026-09-15（通道重写 + Fungi 接入）。接手先看这份；协议细节在
-> `docs/PROTOCOL-agent-channel.md`。
+> 2026-09-15 · v0.3.1 · 接手先看这份。通道协议细节在 `docs/PROTOCOL-agent-channel.md`，
+> 架构图在 `docs/ARCHITECTURE.txt`（保持 .txt，改 .md 会把 ASCII 图折叠掉）。
 
-## 这次做完的事
+## 一、现在是什么状态
 
-1. **测试地图搬出 `examples/`**（`405336a`）：4 个只有测试在用的地图进 `tests/fixtures/`，两个
-   window-detect 诊断改用临时目录；清了硬编码的 `C:\tmp\ghostengine`。
-2. **引入 ruff 门禁**（`25ce4bb`）：`[tool.ruff]` 在 pyproject，只选缺陷类规则；修掉它找到的真问题
-   （`renderer.py` 的 `FogConfig` 未定义注解、`server.py` 重复 import、10 处未使用局部变量…）。
-   注意：`ruff format` 会重写 **43 个**既有文件（仓库是用旧版 ruff 格式化过的），所以格式一律不碰。
-3. **Agent 通道重写**（`8c7f38b` + `8725bf3` merge + `eb9e16e` + `e9440f6` + `97595ae`）：见下。
-4. **Fungi 侧的接入**（Fungi 仓库 `55464bc`，**未推**）：`fungi/tools/ghostworld.py`。
+- **版本 0.3.1**，`master` 已推远端（`git@github.com:Offblink/GhostWorld.git`），tag `v0.3.1`。
+- **Agent 通道**（0.3.0 那批）：文件轮询 → 阻塞事件通道。游戏侧 `EventBus` + 回环 socket + CLI
+  `ghostworld-send` / `ghostworld-wait`；Fungi 侧驱动这条线。硬规矩：通道线程只碰 `cmd_queue` +
+  `EventBus`，**永不碰 WorldState**（`tests/test_channel_server.py` 用"碰一下就抛"的假世界钉住）。
+- **启动即显示路径**：所有入口启动时都报"代码目录 / 安装根 / 每个运行时写入文件（✓可写）"。
+  文本只有一份来源 `metaverse/_paths.startup_lines()`，四处消费：
+  | 入口 | 显示位置 |
+  |---|---|
+  | `ghostworld`、`python -m metaverse.launch` | stdout，每行前缀 `[launcher]` |
+  | `launcher.pyw`（GUI 启动器） | 窗口里「路径」组 |
+  | `editor.pyw`、`ghostworld-editor`、`python -m editor` | 窗口状态栏右下角常驻 + 悬停给全量；CLI 另打印 |
+  | `--where` / `python -m metaverse._paths` | 完整报告（含接 Fungi 的 config 行） |
+  用户明确要求：**只说路径，不要附加说明**（不要"装了旧版/换用户级安装"这类劝告），也别把同一个
+  目录报两遍——`brief()` 就是因此删掉的。
+- **两张 demo 图**（`examples/`，互相配对、门口传送）：
+  - `demo_metaverse.json` = **元素样板图**：16×16 三进室内（每进之间一道墙 + 一个窄门），
+    一进 8 种墙型各一块交错成两排，二进内柱 + 物品，三进深处才是门；实体 12 个（NPC 带 `dialogue`、
+    10 个物品覆盖 `pickup_label`/三种动画/两种遮挡/`capture_for`/`metadata`/`invisible`、1 扇门）；
+    配色是夜雾幽绿一套（天空 `[26,28,44]`→`[116,132,128]`，地板 `[58,66,60]`）。
+  - `demo_metaverse2.json` = 明亮小房间：10×10 正方形、亮天蓝 + 亮草绿、**只有一扇回程门**（中心）。
+- 测试基线：`PYTHONIOENCODING=utf-8 python -m pytest tests -q --ignore=tests/scratch` → **159 collected**。
+  门禁 `ruff check .`（配置在 pyproject）。**不要 `ruff format`**：它会重写 43 个既有文件。
 
-## 通道的形状
+## 二、待办
 
-```
-玩家 Enter → handle_message(say) → EventBus.publish({heard, kind=wake}) ─┐
-                                                                        ↓
-外部 Agent ── ghostworld-wait（阻塞 recv）←── 127.0.0.1 socket ←─────────┘
-Agent ── ghostworld-send '{"cmd":...}' → cmd_queue → 帧循环 drain → handle_message → ack 原路返回
-```
+1. **给编辑器设计图标**（用户点名要做的下一件事）
+   - 主题：**幽灵 👻** —— 把 emoji 渲染成 PNG（本机 PySide6 能渲彩色 emoji，PyQt5 不行；
+     技能 `app-icon-to-avatar-png` 记了公式与验证法）。
+   - 落点与验收（本机实测口径见技能 `qtgui-verify-this-box`）：
+     - `QApplication.setWindowIcon(QIcon(...))` → 窗口 / Alt-Tab；
+     - Windows **任务栏**分组要 `ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Vendor.App")`，
+       且必须在创建任何窗口之前调用，否则任务栏按 `python.exe` 归类、用 python 的图标；
+     - 三个编辑器入口都要覆盖：`editor.pyw`、`ghostworld-editor`（= `editor:main`）、`python -m editor`；
+     - `.ico` 单档 64×64 就够，要高分屏更锐就塞 16/32/48/256。
+   - 仓库目前**没有 assets/ 目录**，要新建；加完文件跑一次门禁。
+2. **让 console script 跑到最新代码**：本机 `site-packages` 里躺着一份**旧副本**（用户就看到过旧横幅
+   "代码 …site-packages\metaverse · 运行时写入 …"）。`pip install -e .` 或重装可同步；
+   元数据不同步只影响 `importlib.metadata.version()`（更新提示会误报"有新版本"）。**没跑之前别信
+   `ghostworld` / `ghostworld-editor` 跑的是检出里的代码。**
+3. **`world.load_state` 会污染新地图**（真 bug，未修）：grid 形状不匹配时它会 `ignoring` 掉旧网格，
+   但**照旧恢复实体**——我重建 #1 时被塞进来过旧 20×20 的坐标，物品卡在墙里。修法一行：形状不匹配
+   时跳过实体/物品恢复。现场：`metaverse/world.py:213 load_state` 附近。
+4. 发版习惯：`version` 只在 `pyproject.toml` 一处；`_update_check` 读的是
+   `raw.githubusercontent.com/.../master/pyproject.toml`，**不依赖 GitHub release**，所以打 tag 就够。
 
-| 文件 | 作用 |
-|---|---|
-| `metaverse/channel.py` | `EventBus`（单调 seq + 有界缓冲 + `Condition`，零 IO）、`PendingCommand`、`FileSink` |
-| `metaverse/channel_server.py` | 回环 socket、行 JSON、`.channel.json` 读写与清理 |
-| `metaverse/channel_client.py` | 纯 stdlib、可整文件拷走的客户端 |
-| `metaverse/cli_channel.py` | 两个 CLI（退出码 0/1/2/3） |
-| `docs/PROTOCOL-agent-channel.md` | 对外契约：线协议 / 发现文件 / 事件对象 / 游标 / 退出码 |
+## 三、坑（都实测过，别重踩）
 
-红线：通道线程只碰 `cmd_queue` 与 `EventBus`，**永不改 `WorldState`**（`tests/test_channel_server.py`
-用"碰一下就抛异常的假世界对象"钉住）。旧 jsonl 通道是兼容层（命令先 move 再读；`agent_output.jsonl` 由
-总线订阅者写、每行带 seq；`listen.py` 按 seq 记游标）。
+1. **地图文件的 grid 是行主序 `grid[y][x]`**。编辑器存盘写 `st.grid.T`、读盘再 `.T`，游戏也 `.T`。
+   手工生成地图必须按行主序写；`validate_entities_on_walls` 要喂**转置后**（世界口径 `[x][y]`）的网格。
+2. **引擎自带默认只给 1/2 号墙配色**（其余走 `fallback_wall_color` 压暗）。要 8 种墙型各自可辨，
+   必须显式写 `colors.walls` 的 8 条（编辑器存盘会自动带上）。
+3. **墙面在游戏里按朝向加阴影**，任何颜色都会变暗；地图的"明亮/阴暗"主要由 sky/floor 决定。
+4. **`launcher.pyw` / `editor.pyw` 是 `.pyw`，没有控制台** → 任何 `print` 在那儿都看不见，信息必须进窗口。
+   offscreen 平台截图会**丢字形**，验证 GUI 用真机平台 + `QTimer` 抓图。
+5. 运行期产物（已 gitignore，别提交）：`metaverse/.channel.json`、`.wait_cursor.json`、
+   `agent_commands.jsonl`、`agent_output.jsonl`、`examples/states/*_state.json`、`launcher_config.json`、
+   `examples/.last_map`、`snapshots/`、`build/`、`*.egg-info/`。
+   `ghostworld.egg-info/` 是当前安装的活元数据，**别删**（删了 `_update_check` 会报错）。
+6. 单实例锁 `metaverse/.instance.lock` 按 **pid + 进程创建时间**辨认（pid 会被系统复用，只认 pid 会误杀）。
+7. git-bash 下 `curl -o /c/...` 会"成功但找不到文件"，用相对路径或 `C:/...`；SSH 偶发
+   `Could not resolve hostname github.com`，重试一次通常就好，推不动时备援是
+   `git -c credential.helper='!gh auth git-credential' -c http.proxy=http://127.0.0.1:7897 push https://github.com/Offblink/GhostWorld.git master:master`。
 
-## 起 metaverse 指南（详细）
-
-### 0. 前置（本机已满足）
-
-- Python ≥ 3.10（本机 3.13.7）；`pip install -e . --no-deps`（已做过 → `import metaverse` 走仓库源码）
-- 依赖 `pygame` `numpy`（GUI 用）；无头模式不需要开窗
-- 两个 CLI 已装成 console script：`ghostworld-send` / `ghostworld-wait`
-  （没装也能用 `python -m metaverse.cli_channel send|wait`）
-- 单实例锁 `metaverse/.instance.lock`：`launch.py` 启动时会**杀掉旧实例**再抢锁——别同时开两份 GUI
-- 全程不产生 `.pyc`（入口设 `sys.dont_write_bytecode`）；清残留用 `./pyclean`
-
-### 1. 起游戏（三选一）
+## 四、常用命令
 
 ```bash
-# ① GUI 正常玩（自己也能打字）
-python -m metaverse.launch                              # 默认地图（记得 examples/.last_map）
-python -m metaverse.launch examples/demo_metaverse.json  # 指定地图
-python launcher.py                                       # GUI 启动器（需 PySide6）
-
-# ② 联调夹具（推荐给 Agent 场景）：无头 + 一个会说活的玩家
-python headless_player.py
-python headless_player.py examples/demo_metaverse.json --say 你好 --after 3
-
-# ③ 无头 + agent（没有人类玩家）
-python headless_agent.py examples/demo_metaverse.json
+PYTHONIOENCODING=utf-8 python -m pytest tests -q --ignore=tests/scratch   # 测试
+ruff check .                                                              # 门禁（别 format）
+python -m metaverse._paths                                                # 我在哪、我写哪
+python -m metaverse.launch examples/demo_metaverse.json                   # 起游戏
+python -m editor                                                          # 起编辑器
+python headless_player.py examples/demo_metaverse.json --say 你好 --after 3  # 无头游戏 + 玩家（验通道）
 ```
-
-启动会打印 `Channel on 127.0.0.1:<port>`，并把 port/token/pid 写进 `metaverse/.channel.json`；
-退出（Ctrl+C 或正常结束）时会删掉它。CLI 就是读这个文件找游戏的。
-
-### 2. 通道是否活着（不用装东西）
-
-```bash
-ghostworld-send '{"cmd":"pos"}'      # → {"type":"position","x":7.5,"y":1.5,...}，退出 0（~0.5s）
-ghostworld-send '{"cmd":"say","message":"你好"}'
-ghostworld-wait --timeout 5          # 阻塞；玩家说话才打印一行 JSON；没事件则退出 3
-ghostworld-wait --all --follow       # 常驻观察者（连 observation 一起打印）
-```
-
-退出码：`send` 0/1/2（1 = 通道在但帧循环没跑，2 = 游戏没在跑）；`wait` 0/2/3（3 = 超时）。
-
-### 3. Fungi 怎么接上（本次已配好）
-
-1. **config.json 已写**：`"ghostworld": true`、`"ghostworld_dir": "<GhostWorld 仓库绝对路径>"`。
-   开关是**许可**：关 = 工具不进工具面、监视器不 arm、没有子进程；开着时工具每次调用还会再查一次，
-   所以关掉立刻生效。设置页在**「拓展」**一节（不是「实验性」——判据见 spec §43：VidSense 与 GhostWorld
-   都是独立项目），右上角开关即时写盘。
-2. **起 Fungi（房间模式：托盘 / WebUI）**。被叫醒的是**本机 Agent**（Fungi 里那个你直接对话的 Agent）。
-3. 玩家在游戏里打字 → Agent 被叫醒，读到的输入长这样：
-   `[GhostWorld] 玩家（player）说：…` → 它用 `ghostworld` 工具回话/走动/拾取。
-4. 看它有没有真的动：直接看游戏画面；或在另一端 `ghostworld-wait --all --follow` 看事件流。
-
-⚠ **游标是共享的**：`metaverse/.wait_cursor.json` 只有一个，所有消费者（Fungi 的监视器、你手工跑的
-`ghostworld-wait`）共用它 → **同时用会让两边互相吃掉事件**。调试时只留一边。
-
-### 4. 排查
-
-| 症状 | 原因 / 处理 |
-|---|---|
-| `channel not found — 游戏没在跑？` | `.channel.json` 不存在：游戏没起、或已退出 |
-| `no ack`（退出 1） | 通道在，但帧循环没跑（GUI 卡住；无头忘了 ticker） |
-| 玩家打字但 Agent 不动 | ① 开关（config / 设置页）；② `ghostworld_dir` 是否指向游戏仓库；③ 上一节那个游标冲突 |
-| Agent 收到 `the game is paused …` | 玩家按了**空格**：客户端 paused 分支不跑帧循环（世界冻着，这是有意），命令会当场被回绝。让玩家按空格恢复、再说一遍 |
-| 玩家说话但 Agent 毫无反应（控制台也没输出） | 先看 CLI 的事件行有没有 flush：follower 的 stdout 是**管道**（8 KB 块缓冲），`_emit` 不 flush 就把玩家的话闷在子进程里——`psutil`/游标都正常、Fungi 就是收不到。2026-09-15 已修 `metaverse/cli_channel.py`（`list.py` 同理）；改完要**重启游戏**让 follower 换新进程 |
-| 玩家的话到 Agent 那边是乱码（`���`），Agent 回的中文/破折号也烂 | CLI 的 stdout 用了**控制台代码页**（cp936）而不是 UTF-8，调用方按 UTF-8 解码就烂。同一次修复：`cli_channel.utf8_stdio()` 把 stdin/stdout/stderr 钉成 UTF-8（`send`/`wait`/`listen` 都调）；同样要换新进程才生效 |
-| 游戏关掉又开 | 不用管：Fungi 的监视器 30s 内自己重连，且**不丢事件**（游标在游戏侧，按 seq 续） |
-| 想自己写客户端 | 读 `docs/PROTOCOL-agent-channel.md`；或把 `metaverse/channel_client.py` 整文件拷走（纯 stdlib） |
-
-## 还剩什么
-
-- **Fungi 的提交没推**（`55464bc`，Fungi `main` ahead 1）——按规矩 push 要你说。
-- **真机 LLM 回合没跑**（要 API key）：GhostWorld 侧与 Fungi 侧的契约都测了，但"Agent 真的边玩边回话"
-  这件事没人看过。跑一次就知道提示词够不够。
-- 一条通道 = 一个角色：`hello` 加 `as` 字段（多角色）刻意没做，是留的加法点。
-- Option B（HTTP 门面）没做：同一个 `EventBus` 上挂 `ThreadingHTTPServer` 即可，零侵入。
-- `README` 的「已知限制」里那条 emoji 限制仍在。
-
-## 验证证据（本机实测）
-
-- `PYTHONIOENCODING=utf-8 python -m pytest tests -q --ignore=tests/scratch` → **139 passed**；`ruff check .` 全绿
-- 真机（无 LLM）：`send pos` 0.48s 回 ack；`wait --timeout 2` 阻塞 2.29s 后退出 3；`wait --all` 把
-  **连上之前就已发布**的事件一次交出，第二次调用退出 3（不重放）；Ctrl+C 后 `.channel.json` 被删。
-- **Fungi 侧真机**（`headless_player.py` 起游戏 + 直接调 `fungi.tools.ghostworld`）：
-  `send_command(pos)` 拿到真 ack、`look` 拿到 perception；`arm()` 后 **0.4s** 收到玩家真实发言
-  （`seq=1, kind=wake, from=player`，且发表于连上之前 → 没丢）；`disarm()` 后监视器与子进程都不剩。
-- Fungi 门禁：`pytest tests -q` → **582 passed**；`ruff check .` / `ruff check fungi tests` 全绿
-  （`shots/` 是 scratch，已进 `extend-exclude`）。
-
-## 环境备忘
-
-- 测试：`PYTHONIOENCODING=utf-8 python -m pytest tests -q --ignore=tests/scratch`
-- 门禁：`ruff check .`（配置在 pyproject；显式传路径会绕过 `extend-exclude`）；格式不要动（见上）
-- 运行期产物（均已 gitignore）：`metaverse/.channel.json`、`metaverse/.wait_cursor.json`、
-  `metaverse/agent_output.jsonl`、`metaverse/tools/listen_cursor.json`
