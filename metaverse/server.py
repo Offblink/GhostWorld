@@ -9,16 +9,56 @@ import asyncio
 import json
 import math
 import os
+import queue
 import time
 
-
-
-
+from ._shared import process_agent_command
+from .channel import KIND_OBSERVATION, KIND_WAKE, EventBus, PendingCommand
 from .world import WorldState
 
 
 _current_ws: WorldState | None = None
 _current_ctx: ServerContext | None = None
+
+DRAIN_MAX_PER_TICK = 32
+
+
+def _publish(evt: dict) -> None:
+    """Publish a channel event when a channel is running (a no-op otherwise)."""
+    ctx = _current_ctx
+    if ctx is not None:
+        ctx.bus.publish(evt)
+
+
+def drain_agent_queue(
+    ctx: ServerContext,
+    ws: WorldState,
+    agent_name: str | None = None,
+    max_items: int = DRAIN_MAX_PER_TICK,
+) -> int:
+    """Execute queued channel commands and hand each response back.
+
+    Frame-loop only: this is the single place channel input reaches the world.
+    Returns how many commands were executed.
+    """
+    name = agent_name or ctx.agent_name
+    handled = 0
+    while handled < max_items:
+        try:
+            pending = ctx.cmd_queue.get_nowait()
+        except queue.Empty:
+            break
+        handled += 1
+        try:
+            resp = process_agent_command(
+                handle_message, ws, name, pending.cmd,
+                log_fn=lambda evt: ctx.bus.publish(evt),
+            )
+        except Exception as e:  # a bad command must not kill the frame loop
+            resp = {"event": "cmd_error", "error": str(e)}
+            ctx.bus.publish({"kind": KIND_OBSERVATION, **resp})
+        pending.deliver(resp)
+    return handled
 
 def handle_message(ws: WorldState, avatar_id: str, msg: dict) -> dict:
     """Process a single message from an avatar. Returns a response dict."""
@@ -61,6 +101,11 @@ def handle_message(ws: WorldState, avatar_id: str, msg: dict) -> dict:
         ws.chat_log.append({"from": avatar_id, "message": message, "channel": channel, "tick": ws.tick, "time": time.time(), "pos": sp})
         if len(ws.chat_log) > 50:
             ws.chat_log = ws.chat_log[-50:]
+        # Player speech is the one event that wakes the agent; the agent's own
+        # speech is an echo it already knows about.
+        if av is None or av.owner != "agent":
+            _publish({"kind": KIND_WAKE, "event": "heard", "from": avatar_id, "message": message,
+                      "channel": channel, "tick": ws.tick})
         return {"type": "said", "from": avatar_id, "message": message, "channel": channel}
 
     if msg_type == "pickup":
@@ -402,24 +447,24 @@ def handle_message(ws: WorldState, avatar_id: str, msg: dict) -> dict:
     if msg_type == "dump_map":
         av = ws.avatars.get(avatar_id)
         lines = []
-        lines.append(f"=== DUMP MAP ===")
+        lines.append("=== DUMP MAP ===")
         lines.append(f"ws.map_path: {ws.map_path}")
         lines.append(f"ws.grid.shape: {ws.grid.shape} (h={ws.grid.shape[1]}, w={ws.grid.shape[0]})")
-        lines.append(f"")
-        lines.append(f"--- Grid (x→, y↓) ---")
+        lines.append("")
+        lines.append("--- Grid (x→, y↓) ---")
         h, w = ws.grid.shape[1], ws.grid.shape[0]
         for y in range(h):
             row = ''.join('█' if ws.grid[x, y] else '·' for x in range(w))
             lines.append(f"y={y:2d}: {row}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"--- Items ({len(ws.items)}) ---")
         for iid, item in ws.items.items():
             lines.append(f"  {iid}: x={item.x} y={item.y} kind={item.kind} pickup={item.pickup} portal={item.portal_target is not None}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"--- Avatars ({len(ws.avatars)}) ---")
         for aid, a in ws.avatars.items():
             lines.append(f"  {aid}: x={a.x} y={a.y} cur_map={a.current_map!r} home={a.home_map!r}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"--- ws.maps keys ({len(ws.maps)}) ---")
         for mname, mdata in ws.maps.items():
             g = mdata['grid']
@@ -442,7 +487,7 @@ def _take_snapshot(ws: WorldState, avatar_id: str) -> bytes:
 
 
 def _post_to_github(author: str, caption: str, png_bytes: bytes) -> str:
-    import base64, json, subprocess, time
+    import base64, subprocess, time
     token = os.environ.get("GHOSTENGINE_GITHUB_TOKEN", "")
     repo = os.environ.get("GHOSTENGINE_REPO", "")
     if not token or not repo:
@@ -481,8 +526,14 @@ def _post_to_github(author: str, caption: str, png_bytes: bytes) -> str:
 
 class ServerContext:
     """Per-server mutable state."""
+
     def __init__(self):
         self.goto_paths: dict[str, list] = {}
+        # Channel plumbing. The bus and the command queue are the only two
+        # things a channel thread may touch — WorldState stays frame-loop only.
+        self.bus = EventBus()
+        self.cmd_queue: queue.Queue[PendingCommand] = queue.Queue()
+        self.agent_name = "omp"
 
 
 def _build_snapshot(ws: WorldState) -> dict:
@@ -687,6 +738,7 @@ def _tick_loop_sync(ctx: ServerContext, ws: WorldState):
     """One tick of the server loop — called inline by LocalClient."""
     ws.tick += 1
     _tick_world(ctx, ws)
+    drain_agent_queue(ctx, ws)
 
 
 def init_server(map_path: str):

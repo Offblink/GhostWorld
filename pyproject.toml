@@ -46,3 +46,5 @@ include = ["ghostengine*", "editor*", "metaverse*"]
 [project.scripts]
 ghostworld = "metaverse.launch:main"
 ghostworld-editor = "editor:main"
+ghostworld-send = "metaverse.cli_channel:send_main"
+ghostworld-wait = "metaverse.cli_channel:wait_main"

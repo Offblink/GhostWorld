@@ -19,6 +19,8 @@ metaverse/agent_output.jsonl
 metaverse/.instance.lock
 metaverse/launch_config.json
 metaverse/.channel.json
+metaverse/.wait_cursor.json
+metaverse/agent_commands.jsonl.processing
 snapshots/
 examples/states/
 

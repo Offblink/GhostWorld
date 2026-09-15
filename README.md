@@ -71,8 +71,9 @@ Raycasting 3D engine + metaverse server + map editor + AI Agent platform.
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 现状与待办（接手先看这份） |
 | [docs/ARCHITECTURE.txt](docs/ARCHITECTURE.txt) | 完整架构图、数据流、命令通道 |
 | [docs/SPEC.md](docs/SPEC.md) | 需求对照（v2 完成项） |
-| [docs/DESIGN-agent-channel.md](docs/DESIGN-agent-channel.md) | Agent 通道重写设计（已确认，待实施） |
-| [docs/PLAN-agent-channel.md](docs/PLAN-agent-channel.md) | Agent 通道重写实施计划 |
+| [docs/PROTOCOL-agent-channel.md](docs/PROTOCOL-agent-channel.md) | Agent 通道协议（给别的程序接入用） |
+| [docs/DESIGN-agent-channel.md](docs/DESIGN-agent-channel.md) | Agent 通道重写设计（已确认） |
+| [docs/PLAN-agent-channel.md](docs/PLAN-agent-channel.md) | Agent 通道重写实施计划（14 个任务已完成） |
 
 ## 安装
 
@@ -88,9 +89,10 @@ pip install git+https://github.com/Offblink/GhostWorld.git
 pip cache purge && pip install --upgrade git+https://github.com/Offblink/GhostWorld.git
 ```
 
-> ⛔ **开发禁令**：本项目**严禁使用 WebSocket、MCP、或任何异步网络通信**。
-> Windows 上 WebSocket 存在未修复的严重 bug，曾导致项目崩溃、数据丢失。
-> 所有模块通过同进程函数调用通信，不经过网络层。
+> ⛔ **开发禁令**：**禁止 WebSocket 协议与 asyncio 网络 I/O**；允许 `127.0.0.1` 上的同步 socket + 线程向队列投递。
+> Windows 上 WebSocket 存在未修复的严重 bug，曾导致项目崩溃、数据丢失；MCP 同样禁用。
+> 病因是「Windows WS + 异步网络 + 跨线程改世界」，所以还有一条硬约束：**`WorldState` 只在帧循环
+> 线程里被修改**，通道线程只能把命令投进 `cmd_queue`、把事件投进 `EventBus`。
 
 ### 缓存策略
 
@@ -108,10 +110,32 @@ python launcher.py                                 # GUI 启动器（需 PySide6
 ```
 
 
-### Agent 控制
+### Agent 控制（通道）
 
-向 `metaverse/agent_commands.jsonl` 写入 JSON 行指令，agent 每 0.3s 读取并执行：
+Agent（`omp`、别的 harness、任何 bot）通过本机通道驱动自己的角色：游戏进程内起一个
+`127.0.0.1` 的 socket 服务，端口与 token 落在 `metaverse/.channel.json`。命令不用轮询，
+发一条拿一个 ack；等唤醒是**阻塞**的：
 
+```bash
+ghostworld-send '{"cmd":"pos"}'                    # 打印 ack JSON，退出码 0
+ghostworld-send '{"cmd":"say","message":"来了"}'
+ghostworld-wait --timeout 25                       # 阻塞：玩家一发言就打印一行事件 JSON
+ghostworld-wait --all --follow                     # 常驻观察者（含 see/goto_done 等非唤醒事件）
+```
+
+**唤醒语义**：Agent 常驻 `ghostworld-wait`，玩家发言即被唤醒；不发言时零开销（阻塞在 socket 上，
+不轮询、不烧 CPU、不烧 token）。思考期间玩家说的第二句会在通道里排队，下次 `wait` 一次性拿到。
+
+| 退出码 | `ghostworld-send` | `ghostworld-wait` |
+|---|---|---|
+| 0 | 收到 ack | 打印了事件 |
+| 1 | 连上了但没有 ack（帧循环没在跑） | — |
+| 2 | 连不上（游戏没在跑）／用法错误 | 同左 |
+| 3 | — | 超时：期限内没有事件 |
+
+命令的 JSON 与下面的文件通道完全一致（`cmd` + 参数）。**旧文件通道仍可用**：向
+`metaverse/agent_commands.jsonl` 写一行 JSON，agent 每 0.3s 读一次并交给帧循环执行（兼容层，
+写进去的命令不再有读后即删的竞态）。
 ```json
 {"cmd":"say","message":"hello"}
 {"cmd":"move","x":10,"y":3}
@@ -141,11 +165,14 @@ python launcher.py                                 # GUI 启动器（需 PySide6
 ### 监听玩家消息
 
 ```bash
-python metaverse/listen.py --once       # 等5秒，打印玩家新消息
-python metaverse/listen.py              # 持续监听
+python metaverse/tools/listen.py --once       # 单次扫描，打印玩家新消息
+python metaverse/tools/listen.py              # 持续 tail（默认每 5 秒）
 ```
 
-玩家在游戏里说的话 → `agent_output.jsonl` 的 `heard` 事件。AI Agent 应每 5 秒检查一次。
+玩家在游戏里说的话 → `agent_output.jsonl` 的 `heard` 事件（`kind=wake`）。
+**推荐**直接用 `ghostworld-wait` 阻塞等唤醒——那是零轮询的，`listen.py` 留给 grep/看日志的场景。
+`listen.py` 的进度按事件 `seq` 记在 `tools/listen_cursor.json`（不再用行号），
+日志被轮转或被新进程重启都不会丢事件、也不会重放。
 
 ### 按键（人类客户端）
 
@@ -267,7 +294,11 @@ python editor.py [项目目录]
 |---|---|
 | `launch.py` | **一键启动**。同时启动服务器、人类客户端、agent |
 | `local_client.py` | **人类客户端**。pygame 渲染第一人称视角，WASD 移动，Enter 聊天，Space 暂停，M 小地图 |
-| `local_agent.py` | **Agent**。同进程运行，每 0.3s 检查 `agent_commands.jsonl` 并执行指令 |
+| `channel.py` | **事件总线**：单调 seq + 有界缓冲 + `Condition`；零 IO，跨线程唯一入口 |
+| `channel_server.py` | **通道服务**：`127.0.0.1` 行 JSON socket；线程只碰 `cmd_queue` 与 `EventBus` |
+| `channel_client.py` | **通道客户端**：纯 stdlib、可整文件拷走给别的项目用 |
+| `cli_channel.py` | 两个 CLI 入口（`ghostworld-send` / `ghostworld-wait`）与退出码 |
+| `local_agent.py` | **Agent**。同进程运行：读 `agent_commands.jsonl`（兼容层）投队列；事件走 EventBus，由 FileSink 落 `agent_output.jsonl` |
 | `launch_config.json` | 启动配置：玩家名、agent 名、贴图路径 |
 
 ### 命令
@@ -315,4 +346,8 @@ python editor.py [项目目录]
 pytest tests/ -q --ignore=tests/scratch
 ```
 
-112 个测试，覆盖引擎渲染、实体投影、碰撞检测、地图 I/O、WorldState、Server 协议、跨地图传送、传送门配对/取消/重配对、编辑器验证（越界清理/墙壁重叠）、Item 深拷贝隔离。
+137 个测试，覆盖引擎渲染、实体投影、碰撞检测、地图 I/O、WorldState、Server 协议、跨地图传送、传送门配对/取消/重配对、编辑器验证（越界清理/墙壁重叠）、Item 深拷贝隔离，以及 Agent 通道（事件总线游标/容量/并发、服务端线程边界、端到端唤醒与排队、旧文件通道兼容、listen 游标轮转/重启）。
+
+```bash
+ruff check .                    # 代码门禁（配置在 pyproject.toml）
+```

@@ -14,9 +14,7 @@ if _ROOT not in _sys.path:
 
 import asyncio
 import json
-import math
 import os
-import random
 
 
 
@@ -28,7 +26,7 @@ def _acquire_lock() -> bool:
     import signal
     if _os.path.exists(LOCK_FILE):
         try:
-            with open(LOCK_FILE, "r") as f:
+            with open(LOCK_FILE) as f:
                 old_pid = int(f.read().strip())
             if _sys.platform == "win32":
                 import ctypes
@@ -78,27 +76,35 @@ async def launch_all(map_path: str):
     # Initialize world state (same-process, no network)
     from metaverse.server import init_server
     ws, ctx, state_path = init_server(mp)
-    # Read GUI launcher config if present
-    _cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "metaverse", "launch_config.json")
-    _cfg = {}
-    if os.path.isfile(_cfg_path):
-        with open(_cfg_path, "r", encoding="utf-8") as f:
-            _cfg = json.load(f)
-        with open(os.path.join(os.path.dirname(__file__), "agent_output.jsonl"), "a", encoding="utf-8") as _lf:
-            _lf.write(json.dumps({"event":"config_read","agent_name":_cfg.get("agent_name","?"),"agent_tex":_cfg.get("agent_texture","")[:50]}) + "\n")
-    else:
-        with open(os.path.join(os.path.dirname(__file__), "agent_output.jsonl"), "a", encoding="utf-8") as _lf:
-            _lf.write(json.dumps({"event":"config_missing","path":_cfg_path}) + "\n")
-    agent_name = _cfg.get("agent_name", "omp")
-    agent_tex = _cfg.get("agent_texture", "")
-    player_name = _cfg.get("player_name", "player")
-    player_tex = _cfg.get("player_texture", "")
+    from metaverse.channel_server import close_channel, open_channel
+    channel = open_channel(ctx.bus, ctx.cmd_queue)
+    print(f"[launcher] Channel on 127.0.0.1:{channel.port} — ghostworld-send / ghostworld-wait")
+    agent_task = None
+    try:
+        # Read GUI launcher config if present
+        _cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "metaverse", "launch_config.json")
+        _cfg = {}
+        if os.path.isfile(_cfg_path):
+            with open(_cfg_path, encoding="utf-8") as f:
+                _cfg = json.load(f)
+            ctx.bus.publish({"event": "config_read", "agent_name": _cfg.get("agent_name", "?"),
+                             "agent_tex": _cfg.get("agent_texture", "")[:50]})
+        else:
+            ctx.bus.publish({"event": "config_missing", "path": _cfg_path})
+        agent_name = _cfg.get("agent_name", "omp")
+        agent_tex = _cfg.get("agent_texture", "")
+        player_name = _cfg.get("player_name", "player")
+        player_tex = _cfg.get("player_texture", "")
+        ctx.agent_name = agent_name
 
-    from metaverse.local_agent import local_agent_loop
-    agent_task = asyncio.create_task(local_agent_loop(agent_name, ws, agent_tex))
-    print(f"[launcher] Agent '{agent_name}' started in-process")
-    await _start_client(player_name, mp, player_tex)
-    agent_task.cancel()
+        from metaverse.local_agent import local_agent_loop
+        agent_task = asyncio.create_task(local_agent_loop(agent_name, ws, agent_tex, ctx=ctx))
+        print(f"[launcher] Agent '{agent_name}' started in-process")
+        await _start_client(player_name, mp, player_tex)
+    finally:
+        if agent_task is not None:
+            agent_task.cancel()
+        close_channel(channel)
     print("[launcher] Goodbye.")
 
 
@@ -131,7 +137,7 @@ def main():
             json.dump(DEFAULT_MAP, f, indent=2, ensure_ascii=False)
         with open(map2_path, 'w', encoding='utf-8') as f:
             json.dump(DEFAULT_MAP2, f, indent=2, ensure_ascii=False)
-        print(f"[launcher] Using default demo maps")
+        print("[launcher] Using default demo maps")
         print("[launcher] Tip: ghostworld-editor to create your own maps!")
     print("[launcher] ⚠ 请切换为英文输入法，点击游戏窗口后再操作！")
 

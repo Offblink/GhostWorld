@@ -15,17 +15,17 @@ def write_cmd(cmd: dict):
 def read_log():
     if not os.path.exists(LOG_FILE):
         return []
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
-        return [json.loads(l) for l in f if l.strip()]
+    with open(LOG_FILE, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
 
 async def _async_test_portal_pairing():
-    map_path = os.path.join(ROOT, "examples", "_test_portal_A.json")
+    map_path = os.path.join(ROOT, "tests", "fixtures", "_test_portal_A.json")
     print(f"[TEST] Loading map: {map_path}")
 
-    from metaverse.server import init_server, _tick_loop_sync, _resolve_portal_target, ServerContext
+    from metaverse.server import init_server, _tick_loop_sync, _resolve_portal_target
     ws, ctx, state_path = init_server(map_path)
     print(f"[TEST] Maps: {list(ws.maps.keys())}")
-    assert "_test_portal_B.json" in ws.maps, f"Map B not preloaded!"
+    assert "_test_portal_B.json" in ws.maps, "Map B not preloaded!"
 
     from metaverse.local_agent import local_agent_loop
     agent_task = asyncio.create_task(local_agent_loop("omp", ws, ""))
@@ -42,12 +42,13 @@ async def _async_test_portal_pairing():
 
     # Step 2: Goto portal position
     write_cmd({"cmd": "goto", "x": 8.5, "y": 5.5})
-    tick_ctx = ServerContext()
 
-    # Advance ticks until portal triggers or timeout
+    # Advance ticks until portal triggers or timeout. The frame loop drains the
+    # command queue of the *server's* context (that is the one commands are
+    # posted to), exactly as LocalClient does with init_server's ctx.
     teleported = False
     for i in range(120):
-        _tick_loop_sync(tick_ctx, ws)
+        _tick_loop_sync(ctx, ws)
         await asyncio.sleep(0.03)
         av = ws.avatars.get("omp")
         if av and av.current_map == "_test_portal_B.json":
