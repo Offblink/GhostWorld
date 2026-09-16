@@ -111,15 +111,17 @@ ghostworld --where          # 等价：python -m metaverse.launch --where
 python tools/build_exe.py --zip     # -> dist/GhostWorld/ 和 dist/GhostWorld-<版本>-win64.zip
 ```
 
-出一个文件夹、两个 exe（共用同一个 `_internal/`）：
+出一个文件夹、三个 exe（共用同一个 `_internal/`）：
 
 | exe | 控制台 | 用途 |
 |---|---|---|
-| `GhostWorld.exe` | 无（窗口版） | 双击 = GUI 启动器；`--editor [目录]` = 地图编辑器；`--play [地图.json]` = 直接进游戏 |
+| `GhostWorld.exe` | 无（窗口版） | 双击 = GUI 启动器；`--play [地图.json]` = 直接进游戏；`--editor [目录]` 也还能用 |
+| `GhostWorldEditor.exe` | 无（窗口版） | 地图编辑器：双击就开，图标和任务栏按钮都是它自己的那枚 |
 | `GhostWorldCLI.exe` | 有 | `send '<json>'`、`wait [--timeout N] [--follow]`、`where`、`play` |
 
-必须两个 exe：**通道 CLI 不能是 `--noconsole` 的**——Fungi 靠子进程运行它并读它的 stdout 来驱动角色，
-窗口版进程没有 stdout，那条线会静默失效。
+**通道 CLI 必须是单独一个控制台 exe**：Fungi 靠子进程运行它并读它的 stdout 来驱动角色，
+窗口版进程没有 stdout，那条线会静默失效。三个 exe 共用一个 `_internal/`，所以第三个只多出自己的
+启动器和字节码包，不会多带一份 Qt。
 
 | 事实 | 说明 |
 |---|---|

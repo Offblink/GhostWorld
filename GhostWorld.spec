@@ -1,19 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — one folder, two exes, one shared `_internal/`.
+"""PyInstaller spec — one folder, three exes, one shared `_internal/`.
 
     pyinstaller GhostWorld.spec --noconfirm        (or: python tools/build_exe.py)
 
-Two entry points, because they disagree about the console:
+Three entry points, because they disagree about the console:
 
-* `GhostWorld.exe`   windowed — launcher, editor, game. A `--noconsole` build has
-  no stdout, and every entry in here is GUI-only, so this is the right shape.
+* `GhostWorld.exe`   windowed — the launcher, and `--play` for the game.
+* `GhostWorldEditor.exe` windowed — the map editor, so the release folder has a
+  double-clickable editor that wears its own icon, rather than only the
+  `GhostWorld.exe --editor` flag (which stays supported and is what this calls).
 * `GhostWorldCLI.exe` console — `send` / `wait` / `where` / `play`. Fungi drives
   the character by spawning this as a subprocess and parsing its stdout, so
-  folding it into the windowed exe would silently break that line.
+  folding it into a windowed exe would silently break that line.
+
+All three share one `_internal/`, so the third exe costs its own bootloader and
+bytecode archive, not another copy of Qt.
 
 What the bundle has to carry beyond the modules:
 
-* `assets/`  — the icon (window icon, and `--icon` below embeds it in both exes)
+* `assets/`  — both icons (window icons, and `--icon` below embeds them in the exes)
 * `examples/` — the demo maps, seeded into the user's directory on first run
 * `pyproject.toml` — `_paths.version_string()` reads the version from it, so the
   exe reports the version it was built from instead of stale installed metadata
@@ -22,7 +27,8 @@ from pathlib import Path
 
 ROOT = Path(SPECPATH)  # noqa: F821 — provided by PyInstaller
 
-VERSION_ICON = str(ROOT / "assets" / "ghostworld.ico")
+GAME_ICON = str(ROOT / "assets" / "ghostworld.ico")
+EDITOR_ICON = str(ROOT / "assets" / "ghostworld-editor.ico")
 datas = [
     (str(ROOT / "pyproject.toml"), "."),
     (str(ROOT / "assets"), "assets"),
@@ -45,9 +51,11 @@ analysis_kwargs = dict(
 )
 
 app = Analysis([str(ROOT / "tools" / "frozen" / "GhostWorld.py")], **analysis_kwargs)
+editor = Analysis([str(ROOT / "tools" / "frozen" / "GhostWorldEditor.py")], **analysis_kwargs)
 cli = Analysis([str(ROOT / "tools" / "frozen" / "GhostWorldCLI.py")], **analysis_kwargs)
 
 app_pyz = PYZ(app.pure)  # noqa: F821
+editor_pyz = PYZ(editor.pure)  # noqa: F821
 cli_pyz = PYZ(cli.pure)  # noqa: F821
 
 app_exe = EXE(  # noqa: F821
@@ -55,7 +63,15 @@ app_exe = EXE(  # noqa: F821
     exclude_binaries=True,
     name="GhostWorld",
     console=False,
-    icon=VERSION_ICON,
+    icon=GAME_ICON,
+    upx=False,
+)
+editor_exe = EXE(  # noqa: F821
+    editor_pyz, editor.scripts, [],
+    exclude_binaries=True,
+    name="GhostWorldEditor",
+    console=False,
+    icon=EDITOR_ICON,
     upx=False,
 )
 cli_exe = EXE(  # noqa: F821
@@ -63,12 +79,13 @@ cli_exe = EXE(  # noqa: F821
     exclude_binaries=True,
     name="GhostWorldCLI",
     console=True,
-    icon=VERSION_ICON,
+    icon=GAME_ICON,
     upx=False,
 )
 
 collect = COLLECT(  # noqa: F821
     app_exe, app.binaries, app.datas,
+    editor_exe, editor.binaries, editor.datas,
     cli_exe, cli.binaries, cli.datas,
     name="GhostWorld",
     upx=False,

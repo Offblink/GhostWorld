@@ -1,13 +1,16 @@
-"""Build the Windows release folder: `GhostWorld.exe` + `GhostWorldCLI.exe`.
+"""Build the Windows release folder: `GhostWorld.exe` + `GhostWorldEditor.exe` + `GhostWorldCLI.exe`.
 
     python tools/build_exe.py [--zip]
 
-Runs `GhostWorld.spec` (see it for why there are two exes) and then *proves* the
+Runs `GhostWorld.spec` (see it for why there are three exes) and then *proves* the
 build rather than trusting the exit code:
 
-* both binaries exist and carry the icon (PyInstaller logs `Copying icon to EXE`
-  only when `--icon` reached the build — a silently dropped icon is exactly the
-  failure this check exists for);
+* all three binaries exist and carry their icon (PyInstaller logs `Copying icon to
+  EXE` only when `--icon` reached the build — a silently dropped icon is exactly
+  the failure this check exists for);
+* both windowed exes stay up for a few seconds (a windowed build has no stdout, so
+  "it is alive" is the one honest check that its GUI toolkit made it into the
+  bundle — the window is on screen meanwhile);
 * `GhostWorldCLI.exe where` runs and reports the packaged version and a writable
   runtime directory — a frozen build that cannot find its own assets is broken
   even though it "built fine".
@@ -21,12 +24,22 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "GhostWorld.spec"
 DIST = ROOT / "dist" / "GhostWorld"
 BUILD = ROOT / "build"
+
+# name -> console?  One folder, one shared `_internal/`: a third exe costs its own
+# bootloader, not another Qt.
+EXES = {
+    "GhostWorld.exe": False,
+    "GhostWorldEditor.exe": False,
+    "GhostWorldCLI.exe": True,
+}
+GUI_SETTLE_S = 5.0  # how long a windowed exe must stay alive to count as working
 
 
 def _run_pyinstaller(clean: bool) -> str:
@@ -48,8 +61,26 @@ def _check_icons(log: str) -> None:
     """`Copying icon to EXE` appears once per exe that got `--icon`."""
     hits = len(re.findall(r"Copying icon to EXE", log))
     print(f"icon embedded in {hits} exe(s)")
-    if hits < 2:
-        raise SystemExit("the icon did not reach every exe — see the build log")
+    if hits < len(EXES):
+        raise SystemExit(f"the icon did not reach every exe ({hits}/{len(EXES)}) — see the build log")
+
+
+def _check_gui(name: str) -> None:
+    """A windowed exe has no stdout, so the only honest check is: does it live?
+
+    Starting it is also the only way to catch a bundle missing its GUI toolkit —
+    the failure a `--noconsole` build hides, because the traceback has nowhere to
+    go. The window is on screen for a few seconds.
+    """
+    exe = DIST / name
+    proc = subprocess.Popen([str(exe)], cwd=str(DIST))
+    try:
+        time.sleep(GUI_SETTLE_S)
+        if proc.poll() is not None:
+            raise SystemExit(f"{name} exited with {proc.returncode} instead of opening a window")
+        print(f"{name} stayed up for {GUI_SETTLE_S:.0f}s")
+    finally:
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
 
 
 def _check_cli(exe: Path) -> None:
@@ -74,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
 
     log = _run_pyinstaller(clean=not args.no_clean)
     _check_icons(log)
+    missing = [name for name in EXES if not (DIST / name).is_file()]
+    if missing:
+        raise SystemExit(f"missing from the build: {missing}")
+    for name, needs_console in EXES.items():
+        if not needs_console:
+            _check_gui(name)
     _check_cli(DIST / "GhostWorldCLI.exe")
     print(f"\n{DIST}")
 

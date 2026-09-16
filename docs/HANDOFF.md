@@ -28,30 +28,34 @@
   16/24/32/48/64/128/256 **逐档渲染**（16/24 px 另有简化画法）。
   任务栏身份也随之分开：`metaverse/_branding.py` 里 `APP_IDS = {launcher: Offblink.GhostWorld,
   editor: …Editor}`——**同一个 AUMID 会把两个窗口并成一个任务栏按钮**，那样两枚图标永远只看得见一枚。
-- **打包**（2026-09-16 起）：`tools/build_exe.py --zip` → `dist/GhostWorld/`（`GhostWorld.exe` 窗口版 +
-  `GhostWorldCLI.exe` 控制台版，共用 `_internal/`）与 `dist/GhostWorld-<版本>-win64.zip`。见「二、待办 1」。
+- **打包**（2026-09-16 起）：`tools/build_exe.py --zip` → `dist/GhostWorld/`（`GhostWorld.exe` 启动器/游戏 +
+  `GhostWorldEditor.exe` 编辑器 + `GhostWorldCLI.exe` 通道 CLI，共用 `_internal/`）与
+  `dist/GhostWorld-<版本>-win64.zip`。见「二、待办 1」。
 - 测试基线：`PYTHONIOENCODING=utf-8 python -m pytest tests -q --ignore=tests/scratch` → **164 collected**。
   门禁 `ruff check .`（配置在 pyproject）。**不要 `ruff format`**：它会重写 43 个既有文件。
 
 ## 二、待办
 
-### 1. 打包：本地已通，CI / release 还没做（用户口径："我需要 exe 的 tag"）
+### 1. 打包：本地已通，CI 还没做（用户口径："我需要 exe 的 tag"）
 - **口径**：tag 名 = 版本号，**tag 必须对应一个可下载的 exe**；只打源码 tag 不算发版。
+  `v0.3.2` 是第一个带 exe 的；`v0.3.1` 只有源码，按口径不算。
   已存在的 `v0.3.1`（2026-09-15）就是"没带 exe"的那种，按新口径**不算发版**，别拿它当模板。
-- **已经做完的**：`GhostWorld.spec` + `tools/build_exe.py`（构建后自检：两个 exe 都有图标、
+- **已经做完的**：`GhostWorld.spec` + `tools/build_exe.py`（构建后自检：三个 exe 都有图标、
   `GhostWorldCLI.exe where` 能跑且运行时目录可写）；冻结后的运行时写入搬到
   `%LOCALAPPDATA%\GhostWorld\`（`_paths.runtime_dir()`），首次启动把内置 demo 图**只补不改**地拷到用户目录；
   `_update_check` 对 exe 改口为"下载新 exe"；版本号从包内 `pyproject.toml` 读，不靠 pip 元数据。
 - **还没做的**：
   - `.github/workflows/` 不存在——CI 构建 + 把 zip 挂到 release 资产，从零建；
   - 打 tag 前先 bump `pyproject.toml`（只有这一处写版本），tag 只指向带 exe 的那次提交。
-- **两个 exe 不能合并**：Fungi 用子进程跑通道 CLI 读 stdout，`--noconsole` 的窗口版没有 stdout，
-  合进去那条线会静默失效（构建脚本与 spec 的注释都写了原因）。
+- **三个 exe 不能合并**：Fungi 用子进程跑通道 CLI 读 stdout，`--noconsole` 的窗口版没有 stdout，
+  合进去那条线会静默失效；编辑器有自己的 exe（双击即开、图标独立），但 `GhostWorld.exe --editor` 仍然保留。
+  构建脚本会逐个自检：三个都有图标、两个窗口版能活着起窗口、CLI 的 `where` 报的运行时目录可写。
 
-### 2. Fungi 侧要跟着改（跨仓库，未做）
-打包版没有 `python -m metaverse.cli_channel`。`GhostWorldCLI.exe where` 会把该填的行打出来：
-`ghostworld_dir` 指向 exe 所在目录，通道命令换成 `GhostWorldCLI.exe send/wait`（参数同
-`ghostworld-send`/`ghostworld-wait`）。`metaverse/_paths.describe()` 的打包版分支就是这条口径的来源。
+### 2. Fungi 侧（已在 Fungi 工作区实现并实测，**未提交**：那边 push 要用户发话）
+打包版没有 `python -m metaverse.cli_channel`。Fungi 的 `fungi/tools/ghostworld.py` 现在按安装形状解析命令：
+`<dir>/GhostWorldCLI.exe`（或 PATH 上的）优先，其次源码检出的 `-m` 形式，最后 console script；
+发现文件也按形状找（发行包看 `%LOCALAPPDATA%\GhostWorld\.channel.json`，检出看 `<dir>/metaverse/.channel.json`）。
+`GhostWorldCLI.exe where` 会把这行口径打出来；`ghostworld_dir` 指 exe 所在目录即可。
 
 ### 3. 分清"跑的是哪一份"（实测于 2026-09-15 22:50）
 - `site-packages/metaverse/` 里是一份**真副本**（不是 editable 壳）。`ghostworld` / `ghostworld-editor`
