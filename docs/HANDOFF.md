@@ -57,6 +57,11 @@
 发现文件也按形状找（发行包看 `%LOCALAPPDATA%\GhostWorld\.channel.json`，检出看 `<dir>/metaverse/.channel.json`）。
 `GhostWorldCLI.exe where` 会把这行口径打出来；`ghostworld_dir` 指 exe 所在目录即可。
 
+路径本身也别让用户懂 JSON 转义：设置页「拓展」下有「游戏目录」输入框（回车即写盘），粘进来的
+"右键复制文件地址"原样（带引号 + 单反斜杠）会被规范化成正斜杠并在右上角提示；打开设置页时若发现
+`config.json` 读不出来（单反斜杠是非法转义，会让整份配置连 api key 一起失效），当场改写成合法 JSON
+（`fungi/config.py` 的 `normalize_dir` / `repair_config_file`）。
+
 ### 3. 分清"跑的是哪一份"（实测于 2026-09-15 22:50）
 - `site-packages/metaverse/` 里是一份**真副本**（不是 editable 壳）。`ghostworld` / `ghostworld-editor`
   这些 console script，以及在**检出目录之外**跑的 `python -m ...`，用的都是它；在检出根目录跑才用检出。
@@ -99,6 +104,13 @@ grid 形状不匹配时它会 `ignoring` 掉旧网格，但**照旧恢复实体*
 11. git-bash 下 `curl -o /c/...` 会"成功但找不到文件"，用相对路径或 `C:/...`；SSH 偶发
     `Could not resolve hostname github.com`，重试一次通常就好，推不动时备援是
     `git -c credential.helper='!gh auth git-credential' -c http.proxy=http://127.0.0.1:7897 push https://github.com/Offblink/GhostWorld.git master:master`。
+12. **别在构造函数里写配置文件**（Fungi 侧本轮真踩到）：GUI 测试的**模块级 window fixture 先于函数级的
+    `CONFIG_PATH` 重定向建立**，构造期写盘会绕过重定向、直接改用户真实的 `config.json`。改成
+    `showEvent`（页面真显示时才动盘）并加"真文件一字节不许动"的回归；改完用 sha256 核过一遍。
+13. `FluentWindow.switchTo(page)` 传页面对象**静默无效**（注册的是 `_scroll(page, "cfgScroll")` 包装），
+    要传 `win.findChild(QScrollArea, "cfgScroll")`。
+14. `QIcon(...)` 必须在活着的 `QApplication` 里构造，否则**解释器硬崩**（在 pytest 里表现为"跑一个用例
+    进程就没了"，没有 traceback）。
 
 ## 四、常用命令
 
